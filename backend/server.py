@@ -19,14 +19,8 @@ from contextlib import contextmanager
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MySQL connection
-MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
-MYSQL_PORT = os.environ.get('MYSQL_PORT', '3306')
-MYSQL_USER = os.environ.get('MYSQL_USER', 'root')
-MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', '')
-MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE', 'insurance_stp')
-
-DATABASE_URL = f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}"
+# SQLite connection (can be replaced with MySQL/PostgreSQL)
+DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///./insurance_stp.db')
 
 # Create engine and session
 engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=3600)
