@@ -1,0 +1,153 @@
+{
+  "identity": {
+    "persona": "E1",
+    "role": "Creative Designer",
+    "principles": [
+      "Fusion over Imitation",
+      "Emotion First",
+      "Content is King",
+      "Zoom In",
+      "Negative Space",
+      "Contrast"
+    ]
+  },
+  "theme": {
+    "mode": "light",
+    "style": "Corporate Clean",
+    "emotional_archetype": "Swiss & High-Contrast",
+    "description": "A professional, high-density interface designed for clarity, trust, and precision. Uses a strict grid system, high contrast for readability, and subtle 'technical' aesthetics."
+  },
+  "typography": {
+    "headings": {
+      "family": "Work Sans",
+      "weights": ["600", "700"],
+      "usage": "Page titles, section headers, modal titles"
+    },
+    "body": {
+      "family": "Inter",
+      "weights": ["400", "500"],
+      "usage": "General text, form labels, table data"
+    },
+    "mono": {
+      "family": "JetBrains Mono",
+      "weights": ["400"],
+      "usage": "Rule logic, code snippets, IDs, audit logs"
+    }
+  },
+  "colors": {
+    "primary": {
+      "name": "Slate Authority",
+      "hex": "#0F172A",
+      "usage": "Primary buttons, active states, key text"
+    },
+    "secondary": {
+      "name": "Slate Soft",
+      "hex": "#F1F5F9",
+      "usage": "Page backgrounds, secondary buttons"
+    },
+    "accent": {
+      "name": "Sky Action",
+      "hex": "#0EA5E9",
+      "usage": "Links, focus rings, active tabs"
+    },
+    "status": {
+      "success": "#10B981",
+      "error": "#EF4444",
+      "warning": "#F59E0B",
+      "info": "#3B82F6"
+    },
+    "background": {
+      "main": "#FFFFFF",
+      "subtle": "#F8FAFC",
+      "card": "#FFFFFF"
+    },
+    "border": {
+      "default": "#E2E8F0",
+      "active": "#94A3B8"
+    }
+  },
+  "layout": {
+    "grid_system": "Bento Grid Mode B (High Density)",
+    "spacing": "Generous (2x standard)",
+    "container_padding": "p-6 md:p-8",
+    "strategies": [
+      "Sidebar Navigation (Collapsible)",
+      "Sticky Header with Global Actions",
+      "Split Panes for Rule Builder (Logic vs. Properties)"
+    ]
+  },
+  "components": {
+    "RuleBuilder": {
+      "description": "A visual interface for creating nested 'If-Then-Else' logic.",
+      "features": [
+        "Drag-and-drop conditions",
+        "Nested groups (AND/OR)",
+        "Visual connectors",
+        "Natural language preview"
+      ],
+      "style": "Card-based blocks with connecting lines. Use 'JetBrains Mono' for operators."
+    },
+    "ScorecardGrid": {
+      "description": "Editable grid for defining scoring logic.",
+      "features": [
+        "Inline editing",
+        "Weight validation (must sum to 100%)",
+        "Band configuration (Min/Max)"
+      ],
+      "style": "Dense table with 'border-collapse'. Numeric inputs right-aligned."
+    },
+    "DashboardWidgets": {
+      "description": "High-level metrics for underwriting performance.",
+      "widgets": [
+        "STP Rate (Donut Chart)",
+        "Recent Failures (List)",
+        "Rule Performance (Bar Chart)"
+      ],
+      "style": "Clean cards with subtle shadows. 'Inter' for labels, 'Work Sans' for big numbers."
+    }
+  },
+  "visual_enhancers": {
+    "surface_strategy": "Grid Borders (The 'Technical' Look)",
+    "shadows": "Subtle ambient shadows (shadow-sm) for cards, sharper shadows for dropdowns.",
+    "borders": "1px solid borders in #E2E8F0. Active elements get #94A3B8.",
+    "textures": "Subtle noise overlay on sidebar for 'paper' feel (optional)."
+  },
+  "image_urls": {
+    "backgrounds": [
+      {
+        "url": "https://images.unsplash.com/photo-1656991955761-8b1a8eb24049?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2ODh8MHwxfHNlYXJjaHwyfHxhYnN0cmFjdCUyMGdlb21ldHJpYyUyMHdoaXRlJTIwYmFja2dyb3VuZCUyMG1pbmltYWx8ZW58MHx8fHwxNzcwMDE1NTY4fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Abstract white geometric waves for login/splash screens or subtle dashboard backgrounds.",
+        "category": "background"
+      }
+    ],
+    "avatars": [
+      {
+        "url": "https://images.pexels.com/photos/30004360/pexels-photo-30004360.jpeg",
+        "description": "Professional headshot for user profile.",
+        "category": "avatar"
+      },
+      {
+        "url": "https://images.pexels.com/photos/30004323/pexels-photo-30004323.jpeg",
+        "description": "Professional headshot for audit logs.",
+        "category": "avatar"
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Implement the 'Rule Builder' using a recursive component structure to handle infinite nesting of conditions.",
+    "Use 'TanStack Table' for all data grids (Rules List, Audit Logs).",
+    "Ensure all forms use 'react-hook-form' with 'zod' validation.",
+    "The 'Scorecard' configuration should allow dynamic addition of rows and columns.",
+    "Use 'Recharts' for the dashboard analytics.",
+    "Strictly follow the 'Light Mode' color palette. Do not use dark mode.",
+    "Ensure high contrast for all text (WCAG AA compliance).",
+    "Add 'data-testid' to all interactive elements."
+  ],
+  "universal_guidelines": [
+    "Avoid 'AI slop' aesthetics (generic gradients, centered layouts).",
+    "Use 'sonner' for toast notifications.",
+    "Prioritize 'Shadcn/UI' components but customize them via Tailwind.",
+    "Do not use 'transition: all'. Animate specific properties.",
+    "Use 'lucide-react' for icons."
+  ]
+}
