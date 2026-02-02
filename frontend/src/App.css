@@ -1,34 +1,162 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* App-specific styles */
+.app-layout {
+  @apply min-h-screen bg-slate-50;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+.main-content {
+  @apply flex-1 overflow-auto;
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+/* Page transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateX(20px);
 }
 
-.App-link {
-    color: #61dafb;
+.page-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+/* Rule builder specific */
+.rule-condition-card {
+  @apply bg-white border border-slate-200 rounded-lg p-4 shadow-sm;
+}
+
+.rule-action-card {
+  @apply bg-slate-50 border border-slate-200 rounded-lg p-4;
+}
+
+/* Metric cards */
+.metric-card {
+  @apply bg-white border border-slate-200 rounded-xl p-6 shadow-sm;
+}
+
+.metric-value {
+  @apply text-3xl font-bold text-slate-900;
+  font-family: 'Work Sans', sans-serif;
+}
+
+.metric-label {
+  @apply text-sm text-slate-500 font-medium uppercase tracking-wide mt-1;
+}
+
+/* Empty states */
+.empty-state {
+  @apply flex flex-col items-center justify-center py-12 text-center;
+}
+
+.empty-state-icon {
+  @apply w-16 h-16 text-slate-300 mb-4;
+}
+
+.empty-state-title {
+  @apply text-lg font-semibold text-slate-700 mb-2;
+}
+
+.empty-state-description {
+  @apply text-sm text-slate-500 max-w-md;
+}
+
+/* Loading states */
+.skeleton {
+  @apply bg-slate-200 animate-pulse rounded;
+}
+
+/* Category badges */
+.category-badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.category-stp_decision {
+  @apply bg-blue-100 text-blue-700;
+}
+
+.category-case_type {
+  @apply bg-purple-100 text-purple-700;
+}
+
+.category-validation {
+  @apply bg-amber-100 text-amber-700;
+}
+
+.category-scorecard {
+  @apply bg-emerald-100 text-emerald-700;
+}
+
+.category-income_sa_grid {
+  @apply bg-cyan-100 text-cyan-700;
+}
+
+.category-bmi_grid {
+  @apply bg-rose-100 text-rose-700;
+}
+
+.category-occupation {
+  @apply bg-indigo-100 text-indigo-700;
+}
+
+.category-agent_channel {
+  @apply bg-orange-100 text-orange-700;
+}
+
+.category-address_pincode {
+  @apply bg-teal-100 text-teal-700;
+}
+
+.category-reason_flag {
+  @apply bg-slate-100 text-slate-700;
+}
+
+/* Priority indicator */
+.priority-badge {
+  @apply inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold;
+}
+
+.priority-high {
+  @apply bg-red-100 text-red-700;
+}
+
+.priority-medium {
+  @apply bg-amber-100 text-amber-700;
+}
+
+.priority-low {
+  @apply bg-slate-100 text-slate-700;
+}
+
+/* Operator display */
+.operator-badge {
+  @apply font-mono text-xs px-2 py-1 bg-slate-100 rounded text-slate-700;
+}
+
+/* Product tags */
+.product-tag {
+  @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+}
+
+.product-term_life {
+  @apply bg-blue-50 text-blue-600 border border-blue-200;
+}
+
+.product-endowment {
+  @apply bg-emerald-50 text-emerald-600 border border-emerald-200;
+}
+
+.product-ulip {
+  @apply bg-purple-50 text-purple-600 border border-purple-200;
+}
+
+/* Trace visualization */
+.trace-item {
+  @apply border-l-4 pl-4 py-2;
+}
+
+.trace-triggered {
+  @apply border-emerald-500 bg-emerald-50;
+}
+
+.trace-not-triggered {
+  @apply border-slate-300 bg-slate-50;
 }
