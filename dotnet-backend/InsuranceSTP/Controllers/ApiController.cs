@@ -711,10 +711,10 @@ public class ApiController : ControllerBase
         {
             Name = name,
             Category = category,
-            ConditionGroupJson = JsonSerializer.Serialize(conditionGroup),
-            ActionJson = JsonSerializer.Serialize(action),
+            ConditionGroupJson = conditionGroupJson,
+            ActionJson = actionJson,
             Priority = priority,
-            Products = new List<string> { "term_life", "endowment", "ulip" }
+            ProductsJson = @"[""term_life"",""endowment"",""ulip""]"
         };
     }
     
