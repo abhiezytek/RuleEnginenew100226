@@ -1,0 +1,7 @@
+/app/dotnet-backend/InsuranceSTP/obj/Debug/net8.0/InsuranceSTP.csproj.AssemblyReference.cache
+/app/dotnet-backend/InsuranceSTP/obj/Debug/net8.0/InsuranceSTP.GeneratedMSBuildEditorConfig.editorconfig
+/app/dotnet-backend/InsuranceSTP/obj/Debug/net8.0/InsuranceSTP.AssemblyInfoInputs.cache
+/app/dotnet-backend/InsuranceSTP/obj/Debug/net8.0/InsuranceSTP.AssemblyInfo.cs
+/app/dotnet-backend/InsuranceSTP/obj/Debug/net8.0/InsuranceSTP.csproj.CoreCompileInputs.cache
+/app/dotnet-backend/InsuranceSTP/obj/Debug/net8.0/InsuranceSTP.MvcApplicationPartsAssemblyInfo.cs
+/app/dotnet-backend/InsuranceSTP/obj/Debug/net8.0/InsuranceSTP.MvcApplicationPartsAssemblyInfo.cache
