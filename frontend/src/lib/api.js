@@ -10,9 +10,29 @@ const api = axios.create({
   },
 });
 
-// Request interceptor for logging
+// Convert snake_case to camelCase for requests
+const toSnakeCase = (str) => str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+const toCamelCase = (str) => str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+
+const convertKeys = (obj, converter) => {
+  if (Array.isArray(obj)) {
+    return obj.map(item => convertKeys(item, converter));
+  }
+  if (obj !== null && typeof obj === 'object') {
+    return Object.keys(obj).reduce((acc, key) => {
+      acc[converter(key)] = convertKeys(obj[key], converter);
+      return acc;
+    }, {});
+  }
+  return obj;
+};
+
+// Request interceptor - convert to camelCase for .NET
 api.interceptors.request.use(
   (config) => {
+    if (config.data) {
+      config.data = convertKeys(config.data, toCamelCase);
+    }
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
@@ -21,7 +41,7 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor for error handling
+// Response interceptor - .NET returns snake_case due to our config
 api.interceptors.response.use(
   (response) => response,
   (error) => {
