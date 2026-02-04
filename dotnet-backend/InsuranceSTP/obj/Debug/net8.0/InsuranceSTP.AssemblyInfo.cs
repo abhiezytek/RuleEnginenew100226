@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("InsuranceSTP")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3fa4a07f7af9cc7ee591d9dfe2871fb98d86c9c8")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2c5143b1f49441fb48b225cdaf53bc1684fdc60c")]
 [assembly: System.Reflection.AssemblyProductAttribute("InsuranceSTP")]
 [assembly: System.Reflection.AssemblyTitleAttribute("InsuranceSTP")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
