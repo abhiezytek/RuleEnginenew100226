@@ -1,0 +1,32 @@
+# Build output
+bin/
+obj/
+publish/
+
+# IDE
+.idea/
+.vscode/
+*.user
+*.suo
+
+# Environment files with secrets
+.env
+*.local
+
+# Keep these for git
+# appsettings.json
+# appsettings.Development.json
+# appsettings.Production.json
+# .env.sample
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
