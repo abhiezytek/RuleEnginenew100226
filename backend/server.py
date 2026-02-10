@@ -386,6 +386,13 @@ class ProposalData(BaseModel):
     is_smoker: bool = False
     has_medical_history: bool = False
     existing_coverage: float = 0
+    # Conditional/Dependent fields
+    cigarettes_per_day: Optional[int] = None  # Only if is_smoker = True
+    smoking_years: Optional[int] = None  # Only if is_smoker = True
+    ailment_type: Optional[str] = None  # Only if has_medical_history = True
+    ailment_details: Optional[str] = None  # Only if has_medical_history = True
+    ailment_duration_years: Optional[int] = None  # Only if has_medical_history = True
+    is_ailment_ongoing: Optional[bool] = None  # Only if has_medical_history = True
     additional_data: Dict[str, Any] = {}
 
 class RuleExecutionTrace(BaseModel):
