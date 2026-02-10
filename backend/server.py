@@ -1321,12 +1321,12 @@ def get_evaluation(evaluation_id: str, db: Session = Depends(get_db)):
 @api_router.get("/dashboard/stats")
 def get_dashboard_stats(db: Session = Depends(get_db)):
     total_rules = db.query(RuleModel).count()
-    active_rules = db.query(RuleModel).filter(RuleModel.is_enabled == True).count()
+    active_rules = db.query(RuleModel).filter(RuleModel.is_enabled).count()
     total_evaluations = db.query(EvaluationModel).count()
     stp_pass = db.query(EvaluationModel).filter(EvaluationModel.stp_decision == "PASS").count()
     stp_fail = db.query(EvaluationModel).filter(EvaluationModel.stp_decision == "FAIL").count()
     total_stages = db.query(RuleStageModel).count()
-    active_stages = db.query(RuleStageModel).filter(RuleStageModel.is_enabled == True).count()
+    active_stages = db.query(RuleStageModel).filter(RuleStageModel.is_enabled).count()
     
     stp_rate = (stp_pass / total_evaluations * 100) if total_evaluations > 0 else 0
     
