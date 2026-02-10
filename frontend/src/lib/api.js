@@ -83,6 +83,15 @@ export const createProduct = (data) => api.post('/products', data);
 export const updateProduct = (id, data) => api.put(`/products/${id}`, data);
 export const deleteProduct = (id) => api.delete(`/products/${id}`);
 
+// Stages API
+export const getStages = () => api.get('/stages');
+export const getStage = (id) => api.get(`/stages/${id}`);
+export const createStage = (data) => api.post('/stages', data);
+export const updateStage = (id, data) => api.put(`/stages/${id}`, data);
+export const deleteStage = (id) => api.delete(`/stages/${id}`);
+export const toggleStage = (id) => api.patch(`/stages/${id}/toggle`);
+export const getRulesByStage = (stageId) => api.get(`/stages/${stageId}/rules`);
+
 // Underwriting Evaluation API
 export const evaluateProposal = (data) => api.post('/underwriting/evaluate', data);
 
