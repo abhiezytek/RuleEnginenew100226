@@ -531,6 +531,24 @@ def get_case_type_label(case_type: int) -> str:
 def model_to_dict(model) -> Dict:
     return {c.name: getattr(model, c.name) for c in model.__table__.columns}
 
+def rule_to_response(db: Session, rule: RuleModel) -> Dict:
+    """Convert a rule model to a response dict with stage_name included"""
+    result = model_to_dict(rule)
+    stage_name = None
+    if rule.stage_id:
+        stage = db.query(RuleStageModel).filter(RuleStageModel.id == rule.stage_id).first()
+        if stage:
+            stage_name = stage.name
+    result['stage_name'] = stage_name
+    return result
+
+def stage_to_response(db: Session, stage: RuleStageModel) -> Dict:
+    """Convert a stage model to a response dict with rule_count included"""
+    result = model_to_dict(stage)
+    rule_count = db.query(RuleModel).filter(RuleModel.stage_id == stage.id).count()
+    result['rule_count'] = rule_count
+    return result
+
 # ==================== API ROUTES ====================
 
 @api_router.get("/")
