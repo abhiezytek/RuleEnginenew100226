@@ -157,6 +157,23 @@ class GridModel(Base):
     created_at = Column(String(50), default=lambda: datetime.now(timezone.utc).isoformat())
     updated_at = Column(String(50), default=lambda: datetime.now(timezone.utc).isoformat())
 
+class RiskBandModel(Base):
+    """Risk bands for premium loading calculation"""
+    __tablename__ = "risk_bands"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(String(50), nullable=False)  # age, smoking, medical, bmi, occupation
+    condition = Column(JSON, nullable=False)  # {min: 18, max: 30} or {value: "diabetes"}
+    loading_percentage = Column(Float, default=0)  # e.g., 25 means +25% premium
+    risk_score = Column(Integer, default=0)  # Points added to risk score
+    products = Column(JSON, default=list)  # Which products this applies to
+    priority = Column(Integer, default=100)  # Lower = evaluated first
+    is_enabled = Column(Boolean, default=True)
+    created_at = Column(String(50), default=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at = Column(String(50), default=lambda: datetime.now(timezone.utc).isoformat())
+
 class ProductModel(Base):
     __tablename__ = "products"
     
