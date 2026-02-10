@@ -10,6 +10,7 @@ import RuleBuilder from "./pages/RuleBuilder";
 import Stages from "./pages/Stages";
 import Scorecards from "./pages/Scorecards";
 import Grids from "./pages/Grids";
+import RiskBands from "./pages/RiskBands";
 import EvaluationConsole from "./pages/EvaluationConsole";
 import AuditLogs from "./pages/AuditLogs";
 import Products from "./pages/Products";
@@ -28,6 +29,7 @@ function App() {
             <Route path="/stages" element={<Stages />} />
             <Route path="/scorecards" element={<Scorecards />} />
             <Route path="/grids" element={<Grids />} />
+            <Route path="/risk-bands" element={<RiskBands />} />
             <Route path="/evaluate" element={<EvaluationConsole />} />
             <Route path="/audit" element={<AuditLogs />} />
             <Route path="/products" element={<Products />} />
