@@ -455,6 +455,7 @@ public class RuleCreateDto
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string Category { get; set; } = "stp_decision";
+    public string? StageId { get; set; }
     public ConditionGroup ConditionGroup { get; set; } = new();
     public RuleAction Action { get; set; } = new();
     public int Priority { get; set; } = 100;
@@ -471,6 +472,8 @@ public class RuleResponseDto
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string Category { get; set; } = string.Empty;
+    public string? StageId { get; set; }
+    public string? StageName { get; set; }
     public ConditionGroup ConditionGroup { get; set; } = new();
     public RuleAction Action { get; set; } = new();
     public int Priority { get; set; }
@@ -482,6 +485,43 @@ public class RuleResponseDto
     public int Version { get; set; }
     public string CreatedAt { get; set; } = string.Empty;
     public string UpdatedAt { get; set; } = string.Empty;
+}
+
+// Stage DTOs
+public class RuleStageCreateDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int ExecutionOrder { get; set; } = 1;
+    public bool StopOnFail { get; set; } = false;
+    public string Color { get; set; } = "slate";
+    public bool IsEnabled { get; set; } = true;
+}
+
+public class RuleStageResponseDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int ExecutionOrder { get; set; }
+    public bool StopOnFail { get; set; }
+    public string Color { get; set; } = string.Empty;
+    public bool IsEnabled { get; set; }
+    public int RuleCount { get; set; }
+    public string CreatedAt { get; set; } = string.Empty;
+    public string UpdatedAt { get; set; } = string.Empty;
+}
+
+// Stage execution trace for evaluation results
+public class StageExecutionTrace
+{
+    public string StageId { get; set; } = string.Empty;
+    public string StageName { get; set; } = string.Empty;
+    public int ExecutionOrder { get; set; }
+    public string Status { get; set; } = "passed"; // passed, failed, skipped
+    public List<RuleExecutionTrace> RulesExecuted { get; set; } = new();
+    public int TriggeredRulesCount { get; set; }
+    public double ExecutionTimeMs { get; set; }
 }
 
 public class ScorecardCreateDto
