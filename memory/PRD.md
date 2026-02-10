@@ -5,7 +5,7 @@ Design and build a Life Insurance Straight Through Processing (STP) and Underwri
 
 ## Technology Stack
 - **Frontend**: React 19, Tailwind CSS, Shadcn/UI
-- **Backend**: FastAPI (Python) - Note: User originally requested .NET but Python backend is the active implementation
+- **Backend**: FastAPI (Python)
 - **Database**: SQLite (temporary; user's original choice was MySQL)
 
 ## Core Features Implemented
@@ -18,7 +18,7 @@ Design and build a Life Insurance Straight Through Processing (STP) and Underwri
 - [x] Priority-based rule execution
 - [x] Full audit trail and rule execution tracing
 
-### 2. Rule Groups/Stages (NEW - Feb 2025)
+### 2. Rule Groups/Stages (Feb 2025)
 - [x] Sequential execution stages for rule processing
 - [x] Stage CRUD operations (Create, Read, Update, Delete)
 - [x] Stage execution order configuration
@@ -27,113 +27,121 @@ Design and build a Life Insurance Straight Through Processing (STP) and Underwri
 - [x] Stage-based evaluation trace in results
 - [x] Visual execution flow diagram
 
-### 3. Frontend UI
+### 3. Dependent/Conditional Rules (Feb 2025)
+- [x] Conditional form fields that appear based on parent answers
+- [x] Smoker details: cigarettes_per_day, smoking_years (only if is_smoker=true)
+- [x] Medical history details: ailment_type, ailment_duration_years, is_ailment_ongoing (only if has_medical_history=true)
+- [x] Rules that evaluate based on conditional field values
+- [x] Product-specific rule targeting
+
+### 4. Sub-Products (Feb 2025)
+- [x] Product hierarchy with parent-child relationships
+- [x] Term Life category with sub-products:
+  - Pure Term (death benefit only)
+  - Term with Returns (maturity benefit)
+- [x] Product-specific rules (different rules for Pure Term vs Term with Returns)
+- [x] Product variant validation rules
+
+### 5. Frontend UI
 - [x] Dashboard with stats and recent evaluations
 - [x] Rule Builder with visual condition editor
 - [x] Rules List with filtering and search
 - [x] Stages Management page
 - [x] Scorecards configuration
 - [x] Grids configuration
-- [x] Evaluation Console with stage trace
+- [x] Evaluation Console with:
+  - Dynamic conditional fields
+  - Product sub-type selector
+  - Stage trace visualization
 - [x] Audit Logs viewer
 - [x] Products management
 
-### 4. API Endpoints
-- [x] `/api/rules` - Rules CRUD
-- [x] `/api/stages` - Stages CRUD (NEW)
-- [x] `/api/scorecards` - Scorecards CRUD
-- [x] `/api/grids` - Grids CRUD
-- [x] `/api/products` - Products CRUD
-- [x] `/api/underwriting/evaluate` - Main evaluation endpoint
-- [x] `/api/dashboard/stats` - Dashboard statistics
-- [x] `/api/audit-logs` - Audit trail
-- [x] `/api/seed` - Sample data seeding
+## Sample Rules Implemented
+
+### Validation Rules (Stage 1)
+- Missing Income Validation
+- Missing Premium Validation
+- Age Eligibility Check
+- Pure Term - High SA Age Restriction (SA >1Cr requires age <50)
+- Term Returns - Minimum Premium Check (min Rs. 15,000)
+- Term Returns - Max Age 55
+
+### STP Decision Rules (Stage 2)
+- High Sum Assured Check
+- Smoker High Risk
+- Medical History Check
+- **Heavy Smoker Check** (dependent: cigarettes_per_day >20)
+- **Ongoing Ailment Hard Stop** (dependent: serious ongoing ailment)
+- **Past Ailment Duration Check** (dependent: recent ailment <5 years)
+
+### Case Type Rules (Stage 3)
+- Low Risk Direct Accept
+- GCRP Referral
+- Diabetes Management Check (dependent)
+- Term Returns - Direct Accept for Young Low-Risk
+
+### Scorecard Rules (Stage 4)
+- Age Score - Young Adult Bonus
+- Non-Smoker Bonus
+- **Long-term Smoker Penalty** (dependent: smoking_years >10)
 
 ## Data Models
 
-### RuleStage
+### Product (Updated)
 ```python
 {
   id: string,
+  code: string,
   name: string,
+  product_type: string,
   description: string,
-  execution_order: int,  # Lower = earlier execution
-  stop_on_fail: bool,    # Stop if any rule in stage fails
-  color: string,         # UI display color
-  is_enabled: bool,
-  rule_count: int        # Computed field
+  parent_product_id: string,  # For sub-products
+  has_maturity_benefit: bool,  # For Term with Returns
+  min_age, max_age, min_sum_assured, max_sum_assured, min_premium
 }
 ```
 
-### Rule (Updated)
+### ProposalData (Updated with Conditional Fields)
 ```python
 {
-  id: string,
-  name: string,
-  description: string,
-  category: enum,        # validation, stp_decision, case_type, scorecard
-  stage_id: string,      # NEW: Reference to RuleStage
-  stage_name: string,    # NEW: Populated from stage
-  condition_group: object,
-  action: object,
-  priority: int,
-  is_enabled: bool,
-  products: list,
-  case_types: list,
-  version: int
+  proposal_id, product_code, product_type,
+  applicant_age, applicant_gender, applicant_income,
+  sum_assured, premium, bmi,
+  occupation_code, occupation_risk, agent_code, agent_tier, pincode,
+  is_smoker, has_medical_history, existing_coverage,
+  # Conditional fields (only when parent is true)
+  cigarettes_per_day: int,      # if is_smoker = true
+  smoking_years: int,           # if is_smoker = true
+  ailment_type: string,         # if has_medical_history = true
+  ailment_details: string,      # if has_medical_history = true
+  ailment_duration_years: int,  # if has_medical_history = true
+  is_ailment_ongoing: bool      # if has_medical_history = true
 }
 ```
-
-### EvaluationResult (Updated)
-```python
-{
-  proposal_id: string,
-  stp_decision: string,
-  case_type: int,
-  case_type_label: string,
-  scorecard_value: int,
-  triggered_rules: list,
-  validation_errors: list,
-  reason_codes: list,
-  reason_messages: list,
-  rule_trace: list,
-  stage_trace: list,     # NEW: Stage-by-stage execution
-  evaluation_time_ms: float
-}
-```
-
-## Stage Execution Logic
-1. Stages are processed in `execution_order` (ascending)
-2. Within each stage, rules are processed by `priority` (ascending)
-3. If a stage has `stop_on_fail=true` and any rule fails, subsequent stages are skipped
-4. Rules without a stage assignment are processed last (as "Unassigned Rules")
-5. Each stage's execution time and triggered rules are tracked in `stage_trace`
 
 ## Test Coverage
-- 18 pytest tests covering:
-  - Stage CRUD operations
-  - Rule-stage assignments
-  - Stage-based evaluation
-  - Dashboard statistics
-  - All tests passing (100%)
+- Stage feature tests: 18 tests passing
+- All backend endpoints tested via curl
+- Frontend UI tested via Playwright screenshots
 
 ## Files Structure
 ```
 /app
 ├── backend/
-│   ├── server.py          # Main FastAPI application
+│   ├── server.py          # Main FastAPI application (1700+ lines)
 │   ├── insurance_stp.db   # SQLite database
 │   └── tests/
-│       └── test_stages.py # Stage feature tests
+│       └── test_stages.py
 ├── frontend/
 │   └── src/
 │       ├── pages/
-│       │   ├── Stages.jsx          # NEW: Stages management
-│       │   ├── EvaluationConsole.jsx # Updated with stage trace
-│       │   ├── RuleBuilder.jsx     # Updated with stage selector
-│       │   └── RulesList.jsx       # Updated with stage column
+│       │   ├── Stages.jsx
+│       │   ├── EvaluationConsole.jsx  # Updated with conditional fields
+│       │   ├── RuleBuilder.jsx
+│       │   └── RulesList.jsx
 │       └── lib/
-│           └── api.js              # Updated with stage APIs
+│           ├── api.js
+│           └── constants.js  # Updated with new product types
 └── memory/
     └── PRD.md
 ```
@@ -143,21 +151,14 @@ Design and build a Life Insurance Straight Through Processing (STP) and Underwri
 ### P1: Database Migration to MySQL
 - User's original choice was MySQL
 - Current SQLite implementation is temporary
-- Migration requires: connection string update, driver installation, EF migrations
 
-### P2: Code Cleanup
-- Remove obsolete `/app/dotnet-backend` directory
-- Remove unused Python backend code if .NET is preferred
-
-### P3: Enhancements
-- Rule dependencies (rules can depend on outputs of previous rules)
-- Visual rule chain flowchart
+### P2: Enhancements
 - Rule versioning and rollback
 - Rule import/export functionality
+- More ailment types and risk bands
+- Policy document generation
 
-## Session History
-- **Initial**: FastAPI + MongoDB
-- **Migration 1**: FastAPI + SQLite
-- **Migration 2**: .NET Core + SQLite (attempted)
-- **Current**: FastAPI + SQLite (active)
+## Session Updates
 - **Feb 2025**: Added Rule Groups/Stages feature
+- **Feb 2025**: Added Dependent/Conditional Rules
+- **Feb 2025**: Added Sub-Products (Pure Term, Term with Returns)
