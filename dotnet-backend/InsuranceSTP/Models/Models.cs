@@ -564,3 +564,95 @@ public class ProductCreateDto
     public int MinPremium { get; set; } = 1000;
     public bool IsEnabled { get; set; } = true;
 }
+
+// Risk Band Entity Model
+public class RiskBand
+{
+    [Key]
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    
+    [Required]
+    [MaxLength(255)]
+    public string Name { get; set; } = string.Empty;
+    
+    public string? Description { get; set; }
+    
+    [Required]
+    [MaxLength(50)]
+    public string Category { get; set; } = "age"; // age, smoking, medical, bmi, occupation
+    
+    [Column(TypeName = "TEXT")]
+    public string ConditionJson { get; set; } = "{}";
+    
+    public double LoadingPercentage { get; set; } = 0;
+    
+    public int RiskScore { get; set; } = 0;
+    
+    [Column(TypeName = "TEXT")]
+    public string ProductsJson { get; set; } = "[]";
+    
+    public int Priority { get; set; } = 100;
+    
+    public bool IsEnabled { get; set; } = true;
+    
+    public string CreatedAt { get; set; } = DateTime.UtcNow.ToString("o");
+    
+    public string UpdatedAt { get; set; } = DateTime.UtcNow.ToString("o");
+    
+    [NotMapped]
+    public RiskBandCondition Condition
+    {
+        get => JsonSerializer.Deserialize<RiskBandCondition>(ConditionJson) ?? new RiskBandCondition();
+        set => ConditionJson = JsonSerializer.Serialize(value);
+    }
+    
+    [NotMapped]
+    public List<string> Products
+    {
+        get => JsonSerializer.Deserialize<List<string>>(ProductsJson) ?? new List<string>();
+        set => ProductsJson = JsonSerializer.Serialize(value);
+    }
+}
+
+// Risk Band DTOs
+public class RiskBandCondition
+{
+    public string Field { get; set; } = string.Empty;
+    public string Operator { get; set; } = "equals";
+    public object? Value { get; set; }
+    public object? Value2 { get; set; }
+}
+
+public class RiskBandCreateDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string Category { get; set; } = "age";
+    public RiskBandCondition Condition { get; set; } = new();
+    public double LoadingPercentage { get; set; } = 0;
+    public int RiskScore { get; set; } = 0;
+    public List<string> Products { get; set; } = new();
+    public int Priority { get; set; } = 100;
+    public bool IsEnabled { get; set; } = true;
+}
+
+public class RiskLoadingResult
+{
+    public int TotalRiskScore { get; set; }
+    public double TotalLoadingPercentage { get; set; }
+    public double BasePremium { get; set; }
+    public double LoadedPremium { get; set; }
+    public List<AppliedRiskBand> AppliedBands { get; set; } = new();
+}
+
+public class AppliedRiskBand
+{
+    public string BandId { get; set; } = string.Empty;
+    public string BandName { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public double LoadingPercentage { get; set; }
+    public int RiskScore { get; set; }
+    public string ConditionField { get; set; } = string.Empty;
+    public object? FieldValue { get; set; }
+}
+
