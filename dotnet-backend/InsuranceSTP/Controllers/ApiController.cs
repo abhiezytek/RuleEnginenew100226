@@ -847,6 +847,8 @@ public class ApiController : ControllerBase
         var totalEvaluations = await _context.Evaluations.CountAsync();
         var stpPass = await _context.Evaluations.Where(e => e.StpDecision == "PASS").CountAsync();
         var stpFail = await _context.Evaluations.Where(e => e.StpDecision == "FAIL").CountAsync();
+        var totalStages = await _context.RuleStages.CountAsync();
+        var activeStages = await _context.RuleStages.Where(s => s.IsEnabled).CountAsync();
         
         var stpRate = totalEvaluations > 0 ? Math.Round((double)stpPass / totalEvaluations * 100, 2) : 0;
         
@@ -865,6 +867,8 @@ public class ApiController : ControllerBase
             total_rules = totalRules,
             active_rules = activeRules,
             inactive_rules = totalRules - activeRules,
+            total_stages = totalStages,
+            active_stages = activeStages,
             total_evaluations = totalEvaluations,
             stp_pass = stpPass,
             stp_fail = stpFail,
