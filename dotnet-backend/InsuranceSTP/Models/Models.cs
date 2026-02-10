@@ -50,6 +50,9 @@ public class Rule
     [MaxLength(50)]
     public string Category { get; set; } = "stp_decision";
     
+    // Stage assignment - null means "Unassigned" (processed last)
+    public string? StageId { get; set; }
+    
     [Column(TypeName = "TEXT")]
     public string ConditionGroupJson { get; set; } = "{}";
     
