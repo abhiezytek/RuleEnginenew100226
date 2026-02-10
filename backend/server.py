@@ -630,7 +630,7 @@ def update_rule(rule_id: str, rule_data: RuleUpdate, db: Session = Depends(get_d
     db.commit()
     db.refresh(rule)
     log_audit(db, "UPDATE", "rule", rule_id, rule.name, update_data)
-    return model_to_dict(rule)
+    return rule_to_response(db, rule)
 
 @api_router.delete("/rules/{rule_id}")
 def delete_rule(rule_id: str, db: Session = Depends(get_db)):
