@@ -878,6 +878,227 @@ public class ApiController : ControllerBase
         });
     }
     
+    // Risk Bands CRUD
+    [HttpGet("risk-bands")]
+    public async Task<IActionResult> GetRiskBands([FromQuery] string? category)
+    {
+        var query = _context.RiskBands.OrderBy(r => r.Category).ThenBy(r => r.Priority);
+        if (!string.IsNullOrEmpty(category))
+            query = (IOrderedQueryable<RiskBand>)query.Where(r => r.Category == category);
+        
+        var bands = await query.ToListAsync();
+        return Ok(bands.Select(ToRiskBandResponse));
+    }
+    
+    [HttpGet("risk-bands/{id}")]
+    public async Task<IActionResult> GetRiskBand(string id)
+    {
+        var band = await _context.RiskBands.FindAsync(id);
+        if (band == null) return NotFound(new { detail = "Risk band not found" });
+        return Ok(ToRiskBandResponse(band));
+    }
+    
+    [HttpPost("risk-bands")]
+    public async Task<IActionResult> CreateRiskBand([FromBody] RiskBandCreateDto dto)
+    {
+        var band = new RiskBand
+        {
+            Name = dto.Name,
+            Description = dto.Description,
+            Category = dto.Category,
+            Condition = dto.Condition,
+            LoadingPercentage = dto.LoadingPercentage,
+            RiskScore = dto.RiskScore,
+            Products = dto.Products,
+            Priority = dto.Priority,
+            IsEnabled = dto.IsEnabled
+        };
+        
+        _context.RiskBands.Add(band);
+        await _context.SaveChangesAsync();
+        await LogAudit("CREATE", "risk_band", band.Id, band.Name);
+        
+        return Ok(ToRiskBandResponse(band));
+    }
+    
+    [HttpPut("risk-bands/{id}")]
+    public async Task<IActionResult> UpdateRiskBand(string id, [FromBody] RiskBandCreateDto dto)
+    {
+        var band = await _context.RiskBands.FindAsync(id);
+        if (band == null) return NotFound(new { detail = "Risk band not found" });
+        
+        band.Name = dto.Name;
+        band.Description = dto.Description;
+        band.Category = dto.Category;
+        band.Condition = dto.Condition;
+        band.LoadingPercentage = dto.LoadingPercentage;
+        band.RiskScore = dto.RiskScore;
+        band.Products = dto.Products;
+        band.Priority = dto.Priority;
+        band.IsEnabled = dto.IsEnabled;
+        band.UpdatedAt = DateTime.UtcNow.ToString("o");
+        
+        await _context.SaveChangesAsync();
+        await LogAudit("UPDATE", "risk_band", band.Id, band.Name);
+        
+        return Ok(ToRiskBandResponse(band));
+    }
+    
+    [HttpDelete("risk-bands/{id}")]
+    public async Task<IActionResult> DeleteRiskBand(string id)
+    {
+        var band = await _context.RiskBands.FindAsync(id);
+        if (band == null) return NotFound(new { detail = "Risk band not found" });
+        
+        _context.RiskBands.Remove(band);
+        await _context.SaveChangesAsync();
+        await LogAudit("DELETE", "risk_band", id, band.Name);
+        
+        return Ok(new { message = "Risk band deleted successfully" });
+    }
+    
+    [HttpPatch("risk-bands/{id}/toggle")]
+    public async Task<IActionResult> ToggleRiskBand(string id)
+    {
+        var band = await _context.RiskBands.FindAsync(id);
+        if (band == null) return NotFound(new { detail = "Risk band not found" });
+        
+        band.IsEnabled = !band.IsEnabled;
+        band.UpdatedAt = DateTime.UtcNow.ToString("o");
+        await _context.SaveChangesAsync();
+        await LogAudit("TOGGLE", "risk_band", band.Id, band.Name);
+        
+        return Ok(new { id, is_enabled = band.IsEnabled });
+    }
+    
+    private RiskLoadingResult CalculateRiskLoading(ProposalData proposal)
+    {
+        var bands = _context.RiskBands.Where(b => b.IsEnabled).OrderBy(b => b.Priority).ToList();
+        var proposalDict = GetProposalDict(proposal);
+        
+        var totalRiskScore = 0;
+        var totalLoadingPercentage = 0.0;
+        var appliedBands = new List<AppliedRiskBand>();
+        
+        foreach (var band in bands)
+        {
+            if (band.Products.Any() && !band.Products.Contains(proposal.ProductType))
+                continue;
+            
+            var condition = band.Condition;
+            var fieldValue = GetFieldValue(proposalDict, condition.Field);
+            
+            if (fieldValue == null && condition.Operator != "is_empty" && condition.Operator != "is_not_empty")
+                continue;
+            
+            var triggered = EvaluateCondition(fieldValue, condition.Operator, condition.Value, condition.Value2);
+            
+            if (triggered)
+            {
+                totalRiskScore += band.RiskScore;
+                totalLoadingPercentage += band.LoadingPercentage;
+                appliedBands.Add(new AppliedRiskBand
+                {
+                    BandId = band.Id,
+                    BandName = band.Name,
+                    Category = band.Category,
+                    LoadingPercentage = band.LoadingPercentage,
+                    RiskScore = band.RiskScore,
+                    ConditionField = condition.Field,
+                    FieldValue = fieldValue
+                });
+            }
+        }
+        
+        var basePremium = proposal.Premium;
+        var loadedPremium = basePremium * (1 + totalLoadingPercentage / 100);
+        
+        return new RiskLoadingResult
+        {
+            TotalRiskScore = totalRiskScore,
+            TotalLoadingPercentage = Math.Round(totalLoadingPercentage, 2),
+            BasePremium = basePremium,
+            LoadedPremium = Math.Round(loadedPremium, 2),
+            AppliedBands = appliedBands
+        };
+    }
+    
+    private Dictionary<string, object?> GetProposalDict(ProposalData proposal)
+    {
+        return new Dictionary<string, object?>
+        {
+            ["proposal_id"] = proposal.ProposalId,
+            ["product_code"] = proposal.ProductCode,
+            ["product_type"] = proposal.ProductType,
+            ["applicant_age"] = proposal.ApplicantAge,
+            ["applicant_gender"] = proposal.ApplicantGender,
+            ["applicant_income"] = proposal.ApplicantIncome,
+            ["sum_assured"] = proposal.SumAssured,
+            ["premium"] = proposal.Premium,
+            ["bmi"] = proposal.Bmi,
+            ["occupation_code"] = proposal.OccupationCode,
+            ["occupation_risk"] = proposal.OccupationRisk,
+            ["agent_code"] = proposal.AgentCode,
+            ["agent_tier"] = proposal.AgentTier,
+            ["pincode"] = proposal.Pincode,
+            ["is_smoker"] = proposal.IsSmoker,
+            ["has_medical_history"] = proposal.HasMedicalHistory,
+            ["existing_coverage"] = proposal.ExistingCoverage,
+            ["cigarettes_per_day"] = proposal.CigarettesPerDay,
+            ["smoking_years"] = proposal.SmokingYears,
+            ["ailment_type"] = proposal.AilmentType,
+            ["ailment_details"] = proposal.AilmentDetails,
+            ["ailment_duration_years"] = proposal.AilmentDurationYears,
+            ["is_ailment_ongoing"] = proposal.IsAilmentOngoing
+        };
+    }
+    
+    private object? GetFieldValue(Dictionary<string, object?> data, string field)
+    {
+        return data.TryGetValue(field, out var value) ? value : null;
+    }
+    
+    private bool EvaluateCondition(object? fieldValue, string op, object? value, object? value2)
+    {
+        try
+        {
+            return op switch
+            {
+                "equals" => fieldValue?.ToString() == value?.ToString(),
+                "not_equals" => fieldValue?.ToString() != value?.ToString(),
+                "greater_than" => Convert.ToDouble(fieldValue) > Convert.ToDouble(value),
+                "less_than" => Convert.ToDouble(fieldValue) < Convert.ToDouble(value),
+                "greater_than_or_equal" => Convert.ToDouble(fieldValue) >= Convert.ToDouble(value),
+                "less_than_or_equal" => Convert.ToDouble(fieldValue) <= Convert.ToDouble(value),
+                "between" => Convert.ToDouble(fieldValue) >= Convert.ToDouble(value) && Convert.ToDouble(fieldValue) <= Convert.ToDouble(value2),
+                "in_list" or "in" => value is JsonElement je && je.ValueKind == JsonValueKind.Array 
+                    ? je.EnumerateArray().Any(x => x.ToString() == fieldValue?.ToString())
+                    : fieldValue?.ToString() == value?.ToString(),
+                _ => false
+            };
+        }
+        catch
+        {
+            return false;
+        }
+    }
+    
+    private static object ToRiskBandResponse(RiskBand b) => new
+    {
+        id = b.Id,
+        name = b.Name,
+        description = b.Description,
+        category = b.Category,
+        condition = b.Condition,
+        loading_percentage = b.LoadingPercentage,
+        risk_score = b.RiskScore,
+        products = b.Products,
+        priority = b.Priority,
+        is_enabled = b.IsEnabled,
+        created_at = b.CreatedAt,
+        updated_at = b.UpdatedAt
+    };
+    
     // Seed Data
     [HttpPost("seed")]
     public async Task<IActionResult> SeedData()
