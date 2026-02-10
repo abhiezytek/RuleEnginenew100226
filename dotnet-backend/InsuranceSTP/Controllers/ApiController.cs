@@ -878,9 +878,19 @@ public class ApiController : ControllerBase
     {
         // Clear existing data
         _context.Rules.RemoveRange(_context.Rules);
+        _context.RuleStages.RemoveRange(_context.RuleStages);
         _context.Scorecards.RemoveRange(_context.Scorecards);
         _context.Grids.RemoveRange(_context.Grids);
         _context.Products.RemoveRange(_context.Products);
+        await _context.SaveChangesAsync();
+        
+        // Add stages
+        var stage1 = new RuleStage { Name = "1. Data Validation", Description = "Validate input data completeness and basic eligibility", ExecutionOrder = 1, StopOnFail = true, Color = "amber" };
+        var stage2 = new RuleStage { Name = "2. Risk Assessment", Description = "Evaluate risk factors and STP eligibility", ExecutionOrder = 2, StopOnFail = false, Color = "blue" };
+        var stage3 = new RuleStage { Name = "3. Case Classification", Description = "Determine case type and routing", ExecutionOrder = 3, StopOnFail = false, Color = "purple" };
+        var stage4 = new RuleStage { Name = "4. Scoring", Description = "Calculate scorecard values", ExecutionOrder = 4, StopOnFail = false, Color = "emerald" };
+        
+        _context.RuleStages.AddRange(stage1, stage2, stage3, stage4);
         await _context.SaveChangesAsync();
         
         // Add products
@@ -892,39 +902,45 @@ public class ApiController : ControllerBase
         };
         _context.Products.AddRange(products);
         
-        // Add validation rules using JSON strings
+        // Add validation rules with stage assignment
         var rules = new List<Rule>
         {
-            CreateRuleJson("Missing Income Validation", "validation", @"{""logical_operator"":""OR"",""conditions"":[{""field"":""applicant_income"",""operator"":""is_empty"",""value"":null},{""field"":""applicant_income"",""operator"":""less_than_or_equal"",""value"":0}],""is_negated"":false}", @"{""decision"":""FAIL"",""reason_code"":""VAL001"",""reason_message"":""Applicant income is missing or invalid"",""is_hard_stop"":true}", 10),
-            CreateRuleJson("Missing Premium Validation", "validation", @"{""logical_operator"":""OR"",""conditions"":[{""field"":""premium"",""operator"":""is_empty"",""value"":null},{""field"":""premium"",""operator"":""less_than_or_equal"",""value"":0}],""is_negated"":false}", @"{""decision"":""FAIL"",""reason_code"":""VAL002"",""reason_message"":""Premium amount is missing or invalid"",""is_hard_stop"":true}", 10),
-            CreateRuleJson("Age Eligibility Check", "validation", @"{""logical_operator"":""OR"",""conditions"":[{""field"":""applicant_age"",""operator"":""less_than"",""value"":18},{""field"":""applicant_age"",""operator"":""greater_than"",""value"":70}],""is_negated"":false}", @"{""decision"":""FAIL"",""reason_code"":""VAL003"",""reason_message"":""Applicant age must be between 18 and 70 years"",""is_hard_stop"":true}", 10),
-            CreateRuleJson("High Sum Assured Check", "stp_decision", @"{""logical_operator"":""AND"",""conditions"":[{""field"":""sum_assured"",""operator"":""greater_than"",""value"":10000000}],""is_negated"":false}", @"{""decision"":""FAIL"",""reason_code"":""STP001"",""reason_message"":""Sum assured exceeds STP limit - Medical required"",""is_hard_stop"":false}", 20),
-            CreateRuleJson("Smoker High Risk", "stp_decision", @"{""logical_operator"":""AND"",""conditions"":[{""field"":""is_smoker"",""operator"":""equals"",""value"":true},{""field"":""sum_assured"",""operator"":""greater_than"",""value"":5000000}],""is_negated"":false}", @"{""decision"":""FAIL"",""reason_code"":""STP002"",""reason_message"":""Smoker with high coverage - Additional underwriting required"",""is_hard_stop"":false}", 25),
-            CreateRuleJson("Medical History Check", "stp_decision", @"{""logical_operator"":""AND"",""conditions"":[{""field"":""has_medical_history"",""operator"":""equals"",""value"":true}],""is_negated"":false}", @"{""decision"":""FAIL"",""reason_code"":""STP003"",""reason_message"":""Medical history present - Underwriter review required"",""is_hard_stop"":false}", 30),
-            CreateRuleJson("Low Risk Direct Accept", "case_type", @"{""logical_operator"":""AND"",""conditions"":[{""field"":""applicant_age"",""operator"":""between"",""value"":25,""value2"":45},{""field"":""is_smoker"",""operator"":""equals"",""value"":false},{""field"":""has_medical_history"",""operator"":""equals"",""value"":false},{""field"":""sum_assured"",""operator"":""less_than_or_equal"",""value"":5000000}],""is_negated"":false}", @"{""case_type"":1,""reason_code"":""CT001"",""reason_message"":""Low risk profile - Direct Accept""}", 50),
-            CreateRuleJson("GCRP Referral", "case_type", @"{""logical_operator"":""OR"",""conditions"":[{""field"":""occupation_risk"",""operator"":""equals"",""value"":""high""},{""field"":""applicant_age"",""operator"":""greater_than"",""value"":55}],""is_negated"":false}", @"{""case_type"":3,""reason_code"":""CT002"",""reason_message"":""Referred to GCRP for additional review""}", 60),
-            CreateRuleJson("Age Score - Young Adult Bonus", "scorecard", @"{""logical_operator"":""AND"",""conditions"":[{""field"":""applicant_age"",""operator"":""between"",""value"":25,""value2"":35}],""is_negated"":false}", @"{""score_impact"":15,""reason_code"":""SC001"",""reason_message"":""Age bonus: 25-35 years""}", 100),
-            CreateRuleJson("Non-Smoker Bonus", "scorecard", @"{""logical_operator"":""AND"",""conditions"":[{""field"":""is_smoker"",""operator"":""equals"",""value"":false}],""is_negated"":false}", @"{""score_impact"":20,""reason_code"":""SC002"",""reason_message"":""Non-smoker bonus""}", 100)
+            CreateRuleJsonWithStage("Missing Income Validation", "validation", stage1.Id, @"{""logical_operator"":""OR"",""conditions"":[{""field"":""applicant_income"",""operator"":""is_empty"",""value"":null},{""field"":""applicant_income"",""operator"":""less_than_or_equal"",""value"":0}],""is_negated"":false}", @"{""decision"":""FAIL"",""reason_code"":""VAL001"",""reason_message"":""Applicant income is missing or invalid"",""is_hard_stop"":true}", 10),
+            CreateRuleJsonWithStage("Missing Premium Validation", "validation", stage1.Id, @"{""logical_operator"":""OR"",""conditions"":[{""field"":""premium"",""operator"":""is_empty"",""value"":null},{""field"":""premium"",""operator"":""less_than_or_equal"",""value"":0}],""is_negated"":false}", @"{""decision"":""FAIL"",""reason_code"":""VAL002"",""reason_message"":""Premium amount is missing or invalid"",""is_hard_stop"":true}", 10),
+            CreateRuleJsonWithStage("Age Eligibility Check", "validation", stage1.Id, @"{""logical_operator"":""OR"",""conditions"":[{""field"":""applicant_age"",""operator"":""less_than"",""value"":18},{""field"":""applicant_age"",""operator"":""greater_than"",""value"":70}],""is_negated"":false}", @"{""decision"":""FAIL"",""reason_code"":""VAL003"",""reason_message"":""Applicant age must be between 18 and 70 years"",""is_hard_stop"":true}", 10),
+            CreateRuleJsonWithStage("High Sum Assured Check", "stp_decision", stage2.Id, @"{""logical_operator"":""AND"",""conditions"":[{""field"":""sum_assured"",""operator"":""greater_than"",""value"":10000000}],""is_negated"":false}", @"{""decision"":""FAIL"",""reason_code"":""STP001"",""reason_message"":""Sum assured exceeds STP limit - Medical required"",""is_hard_stop"":false}", 20),
+            CreateRuleJsonWithStage("Smoker High Risk", "stp_decision", stage2.Id, @"{""logical_operator"":""AND"",""conditions"":[{""field"":""is_smoker"",""operator"":""equals"",""value"":true},{""field"":""sum_assured"",""operator"":""greater_than"",""value"":5000000}],""is_negated"":false}", @"{""decision"":""FAIL"",""reason_code"":""STP002"",""reason_message"":""Smoker with high coverage - Additional underwriting required"",""is_hard_stop"":false}", 25),
+            CreateRuleJsonWithStage("Medical History Check", "stp_decision", stage2.Id, @"{""logical_operator"":""AND"",""conditions"":[{""field"":""has_medical_history"",""operator"":""equals"",""value"":true}],""is_negated"":false}", @"{""decision"":""FAIL"",""reason_code"":""STP003"",""reason_message"":""Medical history present - Underwriter review required"",""is_hard_stop"":false}", 30),
+            CreateRuleJsonWithStage("Low Risk Direct Accept", "case_type", stage3.Id, @"{""logical_operator"":""AND"",""conditions"":[{""field"":""applicant_age"",""operator"":""between"",""value"":25,""value2"":45},{""field"":""is_smoker"",""operator"":""equals"",""value"":false},{""field"":""has_medical_history"",""operator"":""equals"",""value"":false},{""field"":""sum_assured"",""operator"":""less_than_or_equal"",""value"":5000000}],""is_negated"":false}", @"{""case_type"":1,""reason_code"":""CT001"",""reason_message"":""Low risk profile - Direct Accept""}", 50),
+            CreateRuleJsonWithStage("GCRP Referral", "case_type", stage3.Id, @"{""logical_operator"":""OR"",""conditions"":[{""field"":""occupation_risk"",""operator"":""equals"",""value"":""high""},{""field"":""applicant_age"",""operator"":""greater_than"",""value"":55}],""is_negated"":false}", @"{""case_type"":3,""reason_code"":""CT002"",""reason_message"":""Referred to GCRP for additional review""}", 60),
+            CreateRuleJsonWithStage("Age Score - Young Adult Bonus", "scorecard", stage4.Id, @"{""logical_operator"":""AND"",""conditions"":[{""field"":""applicant_age"",""operator"":""between"",""value"":25,""value2"":35}],""is_negated"":false}", @"{""score_impact"":15,""reason_code"":""SC001"",""reason_message"":""Age bonus: 25-35 years""}", 100),
+            CreateRuleJsonWithStage("Non-Smoker Bonus", "scorecard", stage4.Id, @"{""logical_operator"":""AND"",""conditions"":[{""field"":""is_smoker"",""operator"":""equals"",""value"":false}],""is_negated"":false}", @"{""score_impact"":20,""reason_code"":""SC002"",""reason_message"":""Non-smoker bonus""}", 100)
         };
         _context.Rules.AddRange(rules);
         
         await _context.SaveChangesAsync();
         
-        return Ok(new { message = "Sample data seeded successfully", products = products.Length, rules = rules.Count, scorecards = 0, grids = 0 });
+        return Ok(new { message = "Sample data seeded successfully", products = products.Length, rules = rules.Count, stages = 4, scorecards = 0, grids = 0 });
     }
     
     // Helper methods
-    private Rule CreateRuleJson(string name, string category, string conditionGroupJson, string actionJson, int priority)
+    private Rule CreateRuleJsonWithStage(string name, string category, string? stageId, string conditionGroupJson, string actionJson, int priority)
     {
         return new Rule
         {
             Name = name,
             Category = category,
+            StageId = stageId,
             ConditionGroupJson = conditionGroupJson,
             ActionJson = actionJson,
             Priority = priority,
             ProductsJson = @"[""term_life"",""endowment"",""ulip""]"
         };
+    }
+    
+    private Rule CreateRuleJson(string name, string category, string conditionGroupJson, string actionJson, int priority)
+    {
+        return CreateRuleJsonWithStage(name, category, null, conditionGroupJson, actionJson, priority);
     }
     
     private async Task LogAudit(string action, string entityType, string entityId, string entityName, object? changes = null)
