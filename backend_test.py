@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 
 class LifeInsuranceAPITester:
-    def __init__(self, base_url="https://policy-logic.preview.emergentagent.com"):
+    def __init__(self, base_url="https://rule-processor-1.preview.emergentagent.com"):
         self.base_url = base_url
         self.tests_run = 0
         self.tests_passed = 0
