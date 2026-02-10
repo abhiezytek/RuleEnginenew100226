@@ -418,6 +418,13 @@ public class ProposalData
     public bool IsSmoker { get; set; } = false;
     public bool HasMedicalHistory { get; set; } = false;
     public double ExistingCoverage { get; set; } = 0;
+    // Conditional fields for dependent rules
+    public int? CigarettesPerDay { get; set; }
+    public int? SmokingYears { get; set; }
+    public string? AilmentType { get; set; }
+    public string? AilmentDetails { get; set; }
+    public int? AilmentDurationYears { get; set; }
+    public bool? IsAilmentOngoing { get; set; }
 }
 
 public class RuleExecutionTrace
