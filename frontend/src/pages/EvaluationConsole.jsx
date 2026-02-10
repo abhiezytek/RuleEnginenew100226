@@ -423,6 +423,93 @@ const EvaluationConsole = () => {
                   </CardContent>
                 </Card>
 
+                {/* Stage Execution Trace */}
+                {result.stage_trace?.length > 0 && (
+                  <Card className="border-slate-200" data-testid="stage-trace-card">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        Stage Execution Flow
+                        <span className="text-sm font-normal text-slate-500">
+                          ({result.stage_trace.length} stages)
+                        </span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {result.stage_trace.map((stage, idx) => (
+                          <div 
+                            key={stage.stage_id} 
+                            className={`relative p-4 rounded-lg border ${
+                              stage.status === 'passed' ? 'bg-emerald-50 border-emerald-200' :
+                              stage.status === 'failed' ? 'bg-red-50 border-red-200' :
+                              'bg-slate-50 border-slate-200 opacity-50'
+                            }`}
+                            data-testid={`stage-trace-${idx}`}
+                          >
+                            {/* Stage connector line */}
+                            {idx < result.stage_trace.length - 1 && (
+                              <div className="absolute left-8 top-full h-3 w-0.5 bg-slate-300 z-10" />
+                            )}
+                            
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-start gap-3">
+                                {/* Status icon */}
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                  stage.status === 'passed' ? 'bg-emerald-600' :
+                                  stage.status === 'failed' ? 'bg-red-600' :
+                                  'bg-slate-400'
+                                }`}>
+                                  {stage.status === 'passed' && <CheckCircle2 className="w-4 h-4 text-white" />}
+                                  {stage.status === 'failed' && <XCircle className="w-4 h-4 text-white" />}
+                                  {stage.status === 'skipped' && <span className="text-white text-xs font-bold">-</span>}
+                                </div>
+                                
+                                <div>
+                                  <h4 className="font-semibold text-slate-900">{stage.stage_name}</h4>
+                                  <p className="text-sm text-slate-600 mt-0.5">
+                                    {stage.rules_executed?.length || 0} rules evaluated
+                                    {stage.triggered_rules_count > 0 && (
+                                      <span className="text-amber-600 ml-2">
+                                        ({stage.triggered_rules_count} triggered)
+                                      </span>
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              <div className="text-right">
+                                <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium uppercase ${
+                                  stage.status === 'passed' ? 'bg-emerald-200 text-emerald-800' :
+                                  stage.status === 'failed' ? 'bg-red-200 text-red-800' :
+                                  'bg-slate-200 text-slate-600'
+                                }`}>
+                                  {stage.status}
+                                </span>
+                                <p className="text-xs text-slate-500 mt-1">
+                                  {stage.execution_time_ms?.toFixed(2)} ms
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {/* Show triggered rules in stage */}
+                            {stage.triggered_rules_count > 0 && stage.rules_executed && (
+                              <div className="mt-3 pl-9 border-l-2 border-slate-200">
+                                {stage.rules_executed.filter(r => r.triggered).map((rule, rIdx) => (
+                                  <div key={rIdx} className="flex items-center gap-2 py-1 text-sm">
+                                    <CheckCircle2 className="w-3 h-3 text-amber-500" />
+                                    <span className="font-medium text-slate-700">{rule.rule_name}</span>
+                                    <CategoryBadge category={rule.category} />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Rule Trace */}
                 <Card className="border-slate-200" data-testid="rule-trace-card">
                   <CardHeader>
