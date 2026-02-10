@@ -65,6 +65,7 @@ public class ApiController : ControllerBase
             Name = dto.Name,
             Description = dto.Description,
             Category = dto.Category,
+            StageId = dto.StageId,
             ConditionGroup = dto.ConditionGroup,
             Action = dto.Action,
             Priority = dto.Priority,
@@ -91,6 +92,7 @@ public class ApiController : ControllerBase
         rule.Name = dto.Name;
         rule.Description = dto.Description;
         rule.Category = dto.Category;
+        rule.StageId = dto.StageId;
         rule.ConditionGroup = dto.ConditionGroup;
         rule.Action = dto.Action;
         rule.Priority = dto.Priority;
