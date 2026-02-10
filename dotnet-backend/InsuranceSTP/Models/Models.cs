@@ -316,6 +316,35 @@ public class AuditLog
     public string PerformedAt { get; set; } = DateTime.UtcNow.ToString("o");
 }
 
+// Rule Stage Model for grouping rules into sequential execution stages
+public class RuleStage
+{
+    [Key]
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+    
+    [Required]
+    [MaxLength(255)]
+    public string Name { get; set; } = string.Empty;
+    
+    public string? Description { get; set; }
+    
+    // Order determines the sequence of stage execution (lower = earlier)
+    public int ExecutionOrder { get; set; } = 1;
+    
+    // If true, stop evaluation if any rule in this stage fails
+    public bool StopOnFail { get; set; } = false;
+    
+    // Color for UI display
+    [MaxLength(20)]
+    public string Color { get; set; } = "slate";
+    
+    public bool IsEnabled { get; set; } = true;
+    
+    public string CreatedAt { get; set; } = DateTime.UtcNow.ToString("o");
+    
+    public string UpdatedAt { get; set; } = DateTime.UtcNow.ToString("o");
+}
+
 // DTOs
 public class ConditionGroup
 {
