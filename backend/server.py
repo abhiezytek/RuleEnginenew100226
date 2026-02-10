@@ -1354,10 +1354,47 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
 def seed_sample_data(db: Session = Depends(get_db)):
     # Clear existing data
     db.query(RuleModel).delete()
+    db.query(RuleStageModel).delete()
     db.query(ScorecardModel).delete()
     db.query(GridModel).delete()
     db.query(ProductModel).delete()
     db.commit()
+    
+    # Create stages
+    stage1 = RuleStageModel(
+        name="1. Data Validation",
+        description="Validate input data completeness and basic eligibility",
+        execution_order=1,
+        stop_on_fail=True,
+        color="amber"
+    )
+    stage2 = RuleStageModel(
+        name="2. Risk Assessment",
+        description="Evaluate risk factors and STP eligibility",
+        execution_order=2,
+        stop_on_fail=False,
+        color="blue"
+    )
+    stage3 = RuleStageModel(
+        name="3. Case Classification",
+        description="Determine case type and routing",
+        execution_order=3,
+        stop_on_fail=False,
+        color="purple"
+    )
+    stage4 = RuleStageModel(
+        name="4. Scoring",
+        description="Calculate scorecard values",
+        execution_order=4,
+        stop_on_fail=False,
+        color="emerald"
+    )
+    
+    db.add(stage1)
+    db.add(stage2)
+    db.add(stage3)
+    db.add(stage4)
+    db.flush()  # Get IDs assigned
     
     # Sample Products
     products = [
@@ -1392,12 +1429,13 @@ def seed_sample_data(db: Session = Depends(get_db)):
     for p in products:
         db.add(p)
     
-    # Sample Rules
+    # Sample Rules with Stage assignments
     validation_rules = [
         RuleModel(
             name="Missing Income Validation",
             description="Check if applicant income is provided",
             category="validation",
+            stage_id=stage1.id,
             condition_group={
                 "logical_operator": "OR",
                 "conditions": [
@@ -1419,6 +1457,7 @@ def seed_sample_data(db: Session = Depends(get_db)):
             name="Missing Premium Validation",
             description="Check if premium is provided and valid",
             category="validation",
+            stage_id=stage1.id,
             condition_group={
                 "logical_operator": "OR",
                 "conditions": [
@@ -1440,6 +1479,7 @@ def seed_sample_data(db: Session = Depends(get_db)):
             name="Age Eligibility Check",
             description="Validate applicant age is within acceptable range",
             category="validation",
+            stage_id=stage1.id,
             condition_group={
                 "logical_operator": "OR",
                 "conditions": [
@@ -1464,6 +1504,7 @@ def seed_sample_data(db: Session = Depends(get_db)):
             name="High Sum Assured Check",
             description="Flag high sum assured for medical underwriting",
             category="stp_decision",
+            stage_id=stage2.id,
             condition_group={
                 "logical_operator": "AND",
                 "conditions": [
@@ -1484,6 +1525,7 @@ def seed_sample_data(db: Session = Depends(get_db)):
             name="Smoker High Risk",
             description="Flag smokers with high sum assured",
             category="stp_decision",
+            stage_id=stage2.id,
             condition_group={
                 "logical_operator": "AND",
                 "conditions": [
@@ -1505,6 +1547,7 @@ def seed_sample_data(db: Session = Depends(get_db)):
             name="Medical History Check",
             description="Flag applicants with medical history",
             category="stp_decision",
+            stage_id=stage2.id,
             condition_group={
                 "logical_operator": "AND",
                 "conditions": [
@@ -1528,6 +1571,7 @@ def seed_sample_data(db: Session = Depends(get_db)):
             name="Low Risk Direct Accept",
             description="Direct accept for low risk profiles",
             category="case_type",
+            stage_id=stage3.id,
             condition_group={
                 "logical_operator": "AND",
                 "conditions": [
@@ -1551,6 +1595,7 @@ def seed_sample_data(db: Session = Depends(get_db)):
             name="GCRP Referral",
             description="Refer to GCRP for specific conditions",
             category="case_type",
+            stage_id=stage3.id,
             condition_group={
                 "logical_operator": "OR",
                 "conditions": [
@@ -1575,6 +1620,7 @@ def seed_sample_data(db: Session = Depends(get_db)):
             name="Age Score - Young Adult Bonus",
             description="Bonus score for young adults",
             category="scorecard",
+            stage_id=stage4.id,
             condition_group={
                 "logical_operator": "AND",
                 "conditions": [
@@ -1594,6 +1640,7 @@ def seed_sample_data(db: Session = Depends(get_db)):
             name="Non-Smoker Bonus",
             description="Bonus score for non-smokers",
             category="scorecard",
+            stage_id=stage4.id,
             condition_group={
                 "logical_operator": "AND",
                 "conditions": [
