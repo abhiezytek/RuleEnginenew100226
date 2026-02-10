@@ -751,6 +751,9 @@ public class ApiController : ControllerBase
         
         stopwatch.Stop();
         
+        // Calculate Risk Loading
+        var riskLoading = CalculateRiskLoading(proposal);
+        
         var caseTypeLabel = caseType switch
         {
             0 => "Normal Case",
@@ -774,6 +777,7 @@ public class ApiController : ControllerBase
             ReasonMessages = reasonMessages.Distinct().ToList(),
             RuleTrace = ruleTrace,
             StageTrace = stageTrace,
+            RiskLoading = riskLoading,
             EvaluationTimeMs = Math.Round(stopwatch.Elapsed.TotalMilliseconds, 2),
             EvaluatedAt = DateTime.UtcNow.ToString("o")
         };
