@@ -1702,7 +1702,222 @@ def seed_sample_data(db: Session = Depends(get_db)):
         )
     ]
     
-    all_rules = validation_rules + stp_rules + case_type_rules + scorecard_rules
+    # Dependent/Conditional Rules - These only trigger based on parent conditions
+    dependent_rules = [
+        # Smoker dependent rules - only evaluated if is_smoker = True
+        RuleModel(
+            name="Heavy Smoker Check",
+            description="Checks if smoker smokes more than 20 cigarettes/day - requires medical",
+            category="stp_decision",
+            stage_id=stage2.id,
+            condition_group={
+                "logical_operator": "AND",
+                "conditions": [
+                    {"field": "is_smoker", "operator": "equals", "value": True},
+                    {"field": "cigarettes_per_day", "operator": "greater_than", "value": 20}
+                ],
+                "is_negated": False
+            },
+            action={
+                "decision": "FAIL",
+                "reason_code": "SMK001",
+                "reason_message": "Heavy smoker (>20 cigarettes/day) - Medical examination required",
+                "is_hard_stop": False
+            },
+            priority=26, is_enabled=True,
+            products=["term_pure", "term_returns", "term_life"]
+        ),
+        RuleModel(
+            name="Long-term Smoker Penalty",
+            description="Score penalty for smokers with >10 years of smoking",
+            category="scorecard",
+            stage_id=stage4.id,
+            condition_group={
+                "logical_operator": "AND",
+                "conditions": [
+                    {"field": "is_smoker", "operator": "equals", "value": True},
+                    {"field": "smoking_years", "operator": "greater_than", "value": 10}
+                ],
+                "is_negated": False
+            },
+            action={
+                "score_impact": -25,
+                "reason_code": "SMK002",
+                "reason_message": "Long-term smoker penalty (>10 years)"
+            },
+            priority=101, is_enabled=True,
+            products=["term_pure", "term_returns", "term_life"]
+        ),
+        # Medical history dependent rules - only evaluated if has_medical_history = True
+        RuleModel(
+            name="Ongoing Ailment Hard Stop",
+            description="Reject if applicant has ongoing serious ailment",
+            category="stp_decision",
+            stage_id=stage2.id,
+            condition_group={
+                "logical_operator": "AND",
+                "conditions": [
+                    {"field": "has_medical_history", "operator": "equals", "value": True},
+                    {"field": "is_ailment_ongoing", "operator": "equals", "value": True},
+                    {"field": "ailment_type", "operator": "in_list", "value": ["cancer", "heart_disease", "kidney_failure"]}
+                ],
+                "is_negated": False
+            },
+            action={
+                "decision": "FAIL",
+                "reason_code": "MED001",
+                "reason_message": "Ongoing serious ailment - Application declined",
+                "is_hard_stop": True
+            },
+            priority=15, is_enabled=True,
+            products=["term_pure", "term_returns", "term_life", "endowment", "ulip"]
+        ),
+        RuleModel(
+            name="Past Ailment Duration Check",
+            description="Flag if ailment was recent (within 5 years)",
+            category="stp_decision",
+            stage_id=stage2.id,
+            condition_group={
+                "logical_operator": "AND",
+                "conditions": [
+                    {"field": "has_medical_history", "operator": "equals", "value": True},
+                    {"field": "is_ailment_ongoing", "operator": "equals", "value": False},
+                    {"field": "ailment_duration_years", "operator": "less_than", "value": 5}
+                ],
+                "is_negated": False
+            },
+            action={
+                "decision": "FAIL",
+                "reason_code": "MED002",
+                "reason_message": "Recent ailment history (<5 years) - Medical reports required",
+                "is_hard_stop": False
+            },
+            priority=31, is_enabled=True,
+            products=["term_pure", "term_returns", "term_life"]
+        ),
+        RuleModel(
+            name="Diabetes Management Check",
+            description="Diabetes is manageable if controlled",
+            category="case_type",
+            stage_id=stage3.id,
+            condition_group={
+                "logical_operator": "AND",
+                "conditions": [
+                    {"field": "has_medical_history", "operator": "equals", "value": True},
+                    {"field": "ailment_type", "operator": "equals", "value": "diabetes"},
+                    {"field": "is_ailment_ongoing", "operator": "equals", "value": True}
+                ],
+                "is_negated": False
+            },
+            action={
+                "case_type": 3,
+                "reason_code": "MED003",
+                "reason_message": "Diabetes case - Refer to GCRP with medical reports"
+            },
+            priority=55, is_enabled=True,
+            products=["term_pure", "term_returns", "term_life", "endowment"],
+            case_types=[0]
+        )
+    ]
+    
+    # Product-specific rules (Pure Term vs Term with Returns)
+    product_specific_rules = [
+        # Pure Term specific - lower premiums, stricter underwriting
+        RuleModel(
+            name="Pure Term - High SA Age Restriction",
+            description="Pure Term: SA > 1Cr requires age < 50",
+            category="validation",
+            stage_id=stage1.id,
+            condition_group={
+                "logical_operator": "AND",
+                "conditions": [
+                    {"field": "product_type", "operator": "equals", "value": "term_pure"},
+                    {"field": "sum_assured", "operator": "greater_than", "value": 10000000},
+                    {"field": "applicant_age", "operator": "greater_than_or_equal", "value": 50}
+                ],
+                "is_negated": False
+            },
+            action={
+                "decision": "FAIL",
+                "reason_code": "PT001",
+                "reason_message": "Pure Term: Sum Assured >1Cr not available for age 50+",
+                "is_hard_stop": True
+            },
+            priority=12, is_enabled=True,
+            products=["term_pure"]
+        ),
+        # Term with Returns specific - investment component rules
+        RuleModel(
+            name="Term Returns - Minimum Premium Check",
+            description="Term with Returns requires minimum premium of 15000",
+            category="validation",
+            stage_id=stage1.id,
+            condition_group={
+                "logical_operator": "AND",
+                "conditions": [
+                    {"field": "product_type", "operator": "equals", "value": "term_returns"},
+                    {"field": "premium", "operator": "less_than", "value": 15000}
+                ],
+                "is_negated": False
+            },
+            action={
+                "decision": "FAIL",
+                "reason_code": "TR001",
+                "reason_message": "Term with Returns requires minimum premium of Rs. 15,000",
+                "is_hard_stop": True
+            },
+            priority=11, is_enabled=True,
+            products=["term_returns"]
+        ),
+        RuleModel(
+            name="Term Returns - Max Age 55",
+            description="Term with Returns not available for age > 55",
+            category="validation",
+            stage_id=stage1.id,
+            condition_group={
+                "logical_operator": "AND",
+                "conditions": [
+                    {"field": "product_type", "operator": "equals", "value": "term_returns"},
+                    {"field": "applicant_age", "operator": "greater_than", "value": 55}
+                ],
+                "is_negated": False
+            },
+            action={
+                "decision": "FAIL",
+                "reason_code": "TR002",
+                "reason_message": "Term with Returns not available for applicants above 55 years",
+                "is_hard_stop": True
+            },
+            priority=11, is_enabled=True,
+            products=["term_returns"]
+        ),
+        RuleModel(
+            name="Term Returns - Direct Accept for Young Low-Risk",
+            description="Direct accept young non-smokers for Term with Returns",
+            category="case_type",
+            stage_id=stage3.id,
+            condition_group={
+                "logical_operator": "AND",
+                "conditions": [
+                    {"field": "product_type", "operator": "equals", "value": "term_returns"},
+                    {"field": "applicant_age", "operator": "between", "value": 25, "value2": 40},
+                    {"field": "is_smoker", "operator": "equals", "value": False},
+                    {"field": "has_medical_history", "operator": "equals", "value": False}
+                ],
+                "is_negated": False
+            },
+            action={
+                "case_type": 1,
+                "reason_code": "TR003",
+                "reason_message": "Term with Returns - Direct Accept for low-risk profile"
+            },
+            priority=48, is_enabled=True,
+            products=["term_returns"],
+            case_types=[0]
+        )
+    ]
+    
+    all_rules = validation_rules + stp_rules + case_type_rules + scorecard_rules + dependent_rules + product_specific_rules
     for r in all_rules:
         db.add(r)
     
