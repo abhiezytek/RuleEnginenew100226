@@ -477,6 +477,8 @@ class EvaluationResult(BaseModel):
     reason_messages: List[str]
     rule_trace: List[RuleExecutionTrace]
     stage_trace: List[StageExecutionTrace] = []
+    # Risk Loading
+    risk_loading: Optional[RiskLoadingResult] = None
     evaluation_time_ms: float
     evaluated_at: str
 
