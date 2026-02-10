@@ -1192,7 +1192,7 @@ def evaluate_proposal(proposal: ProposalData, db: Session = Depends(get_db)):
     # Legacy: Scorecard Evaluation (if no stage rules affected score)
     scorecards = db.query(ScorecardModel).filter(
         ScorecardModel.product == proposal.product_type.value,
-        ScorecardModel.is_enabled == True
+        ScorecardModel.is_enabled
     ).all()
     
     for scorecard in scorecards:
