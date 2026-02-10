@@ -1215,7 +1215,7 @@ def evaluate_proposal(proposal: ProposalData, db: Session = Depends(get_db)):
             case_type = CaseTypeEnum.GCRP.value
     
     # Legacy: Grid Evaluations
-    grids = db.query(GridModel).filter(GridModel.is_enabled == True).all()
+    grids = db.query(GridModel).filter(GridModel.is_enabled).all()
     
     for grid in grids:
         if grid.products and proposal.product_type.value not in grid.products:
