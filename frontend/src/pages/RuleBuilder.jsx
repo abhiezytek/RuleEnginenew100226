@@ -377,6 +377,32 @@ const RuleBuilder = () => {
                   </div>
 
                   <div>
+                    <Label htmlFor="stage">Execution Stage</Label>
+                    <Select 
+                      value={formData.stage_id || 'none'} 
+                      onValueChange={(v) => setFormData({ ...formData, stage_id: v === 'none' ? null : v })}
+                    >
+                      <SelectTrigger className="mt-1.5" data-testid="rule-stage-select">
+                        <SelectValue placeholder="Select stage" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          <span className="text-slate-500">No stage (processed last)</span>
+                        </SelectItem>
+                        {stages.map(stage => (
+                          <SelectItem key={stage.id} value={stage.id}>
+                            <span className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full bg-${stage.color}-500`} />
+                              {stage.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-slate-500 mt-1">Rules in earlier stages run first</p>
+                  </div>
+
+                  <div>
                     <Label htmlFor="priority">Priority</Label>
                     <Input
                       id="priority"
