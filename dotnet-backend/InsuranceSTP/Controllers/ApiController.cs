@@ -1110,6 +1110,7 @@ public class ApiController : ControllerBase
         // Clear existing data
         _context.Rules.RemoveRange(_context.Rules);
         _context.RuleStages.RemoveRange(_context.RuleStages);
+        _context.RiskBands.RemoveRange(_context.RiskBands);
         _context.Scorecards.RemoveRange(_context.Scorecards);
         _context.Grids.RemoveRange(_context.Grids);
         _context.Products.RemoveRange(_context.Products);
