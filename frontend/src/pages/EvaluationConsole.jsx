@@ -507,6 +507,79 @@ const EvaluationConsole = () => {
                       </div>
                     </div>
 
+                    {/* Risk Loading / Premium Adjustment */}
+                    {result.risk_loading && (
+                      <Card className="border-purple-200 bg-purple-50/50" data-testid="risk-loading-card">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-base flex items-center gap-2 text-purple-800">
+                            <TrendingUp className="w-5 h-5" />
+                            Premium Loading Calculation
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="p-3 bg-white rounded-lg border border-purple-200">
+                              <p className="text-xs text-purple-600">Base Premium</p>
+                              <p className="text-lg font-bold text-slate-900">
+                                {formatCurrency(result.risk_loading.base_premium)}
+                              </p>
+                            </div>
+                            <div className="p-3 bg-white rounded-lg border border-purple-200">
+                              <p className="text-xs text-purple-600">Loaded Premium</p>
+                              <p className="text-lg font-bold text-purple-700">
+                                {formatCurrency(result.risk_loading.loaded_premium)}
+                                {result.risk_loading.total_loading_percentage !== 0 && (
+                                  <span className={`ml-2 text-sm font-normal ${
+                                    result.risk_loading.total_loading_percentage > 0 ? 'text-red-600' : 'text-green-600'
+                                  }`}>
+                                    ({result.risk_loading.total_loading_percentage > 0 ? '+' : ''}{result.risk_loading.total_loading_percentage}%)
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center justify-between text-sm mb-3">
+                            <span className="text-purple-700">Total Risk Score</span>
+                            <span className="font-semibold">{result.risk_loading.total_risk_score} pts</span>
+                          </div>
+                          
+                          {result.risk_loading.applied_bands?.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs font-medium text-purple-700 uppercase tracking-wide">Applied Risk Bands</p>
+                              <div className="max-h-40 overflow-y-auto space-y-1">
+                                {result.risk_loading.applied_bands.map((band, idx) => (
+                                  <div 
+                                    key={idx} 
+                                    className="flex items-center justify-between py-1.5 px-2 bg-white rounded border border-purple-100 text-sm"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                                        band.category === 'age' ? 'bg-blue-100 text-blue-700' :
+                                        band.category === 'smoking' ? 'bg-amber-100 text-amber-700' :
+                                        band.category === 'medical' ? 'bg-rose-100 text-rose-700' :
+                                        band.category === 'bmi' ? 'bg-green-100 text-green-700' :
+                                        'bg-slate-100 text-slate-700'
+                                      }`}>
+                                        {band.category}
+                                      </span>
+                                      <span className="text-slate-700">{band.band_name}</span>
+                                    </div>
+                                    <span className={`font-medium ${
+                                      band.loading_percentage > 0 ? 'text-red-600' : 
+                                      band.loading_percentage < 0 ? 'text-green-600' : 'text-slate-600'
+                                    }`}>
+                                      {band.loading_percentage > 0 ? '+' : ''}{band.loading_percentage}%
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+
                     {/* Triggered Rules */}
                     <div>
                       <h4 className="text-sm font-semibold text-slate-700 mb-2">
