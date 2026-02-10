@@ -972,6 +972,156 @@ def delete_grid(grid_id: str, db: Session = Depends(get_db)):
     log_audit(db, "DELETE", "grid", grid_id, name)
     return {"message": "Grid deleted successfully"}
 
+# ==================== RISK BANDS CRUD ====================
+@api_router.post("/risk-bands")
+def create_risk_band(band_data: RiskBandCreate, db: Session = Depends(get_db)):
+    band = RiskBandModel(
+        name=band_data.name,
+        description=band_data.description,
+        category=band_data.category,
+        condition=band_data.condition.model_dump(),
+        loading_percentage=band_data.loading_percentage,
+        risk_score=band_data.risk_score,
+        products=band_data.products,
+        priority=band_data.priority,
+        is_enabled=band_data.is_enabled
+    )
+    db.add(band)
+    db.commit()
+    db.refresh(band)
+    log_audit(db, "CREATE", "risk_band", band.id, band.name)
+    return model_to_dict(band)
+
+@api_router.get("/risk-bands")
+def get_risk_bands(category: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(RiskBandModel).order_by(RiskBandModel.category, RiskBandModel.priority)
+    if category:
+        query = query.filter(RiskBandModel.category == category)
+    bands = query.all()
+    return [model_to_dict(b) for b in bands]
+
+@api_router.get("/risk-bands/{band_id}")
+def get_risk_band(band_id: str, db: Session = Depends(get_db)):
+    band = db.query(RiskBandModel).filter(RiskBandModel.id == band_id).first()
+    if not band:
+        raise HTTPException(status_code=404, detail="Risk band not found")
+    return model_to_dict(band)
+
+@api_router.put("/risk-bands/{band_id}")
+def update_risk_band(band_id: str, band_data: RiskBandCreate, db: Session = Depends(get_db)):
+    band = db.query(RiskBandModel).filter(RiskBandModel.id == band_id).first()
+    if not band:
+        raise HTTPException(status_code=404, detail="Risk band not found")
+    
+    band.name = band_data.name
+    band.description = band_data.description
+    band.category = band_data.category
+    band.condition = band_data.condition.model_dump()
+    band.loading_percentage = band_data.loading_percentage
+    band.risk_score = band_data.risk_score
+    band.products = band_data.products
+    band.priority = band_data.priority
+    band.is_enabled = band_data.is_enabled
+    band.updated_at = datetime.now(timezone.utc).isoformat()
+    
+    db.commit()
+    db.refresh(band)
+    log_audit(db, "UPDATE", "risk_band", band_id, band.name)
+    return model_to_dict(band)
+
+@api_router.delete("/risk-bands/{band_id}")
+def delete_risk_band(band_id: str, db: Session = Depends(get_db)):
+    band = db.query(RiskBandModel).filter(RiskBandModel.id == band_id).first()
+    if not band:
+        raise HTTPException(status_code=404, detail="Risk band not found")
+    name = band.name
+    db.delete(band)
+    db.commit()
+    log_audit(db, "DELETE", "risk_band", band_id, name)
+    return {"message": "Risk band deleted successfully"}
+
+@api_router.patch("/risk-bands/{band_id}/toggle")
+def toggle_risk_band(band_id: str, db: Session = Depends(get_db)):
+    band = db.query(RiskBandModel).filter(RiskBandModel.id == band_id).first()
+    if not band:
+        raise HTTPException(status_code=404, detail="Risk band not found")
+    band.is_enabled = not band.is_enabled
+    band.updated_at = datetime.now(timezone.utc).isoformat()
+    db.commit()
+    log_audit(db, "TOGGLE", "risk_band", band_id, band.name)
+    return {"id": band_id, "is_enabled": band.is_enabled}
+
+def calculate_risk_loading(db: Session, proposal: ProposalData) -> RiskLoadingResult:
+    """Calculate premium loading based on risk bands"""
+    bands = db.query(RiskBandModel).filter(RiskBandModel.is_enabled).order_by(RiskBandModel.priority).all()
+    
+    proposal_dict = proposal.model_dump()
+    total_risk_score = 0
+    total_loading_percentage = 0.0
+    applied_bands = []
+    
+    for band in bands:
+        # Check if band applies to this product
+        if band.products and proposal.product_type.value not in band.products:
+            continue
+        
+        condition = band.condition
+        field = condition.get('field', '')
+        operator = condition.get('operator', '')
+        value = condition.get('value')
+        value2 = condition.get('value2')
+        
+        field_value = rule_engine.get_field_value(proposal_dict, field)
+        
+        # Skip if field value is None and we need to compare
+        if field_value is None and operator not in ['is_empty', 'is_not_empty']:
+            continue
+        
+        triggered = False
+        try:
+            if operator == 'equals':
+                triggered = field_value == value
+            elif operator == 'not_equals':
+                triggered = field_value != value
+            elif operator == 'greater_than':
+                triggered = float(field_value) > float(value)
+            elif operator == 'less_than':
+                triggered = float(field_value) < float(value)
+            elif operator == 'greater_than_or_equal':
+                triggered = float(field_value) >= float(value)
+            elif operator == 'less_than_or_equal':
+                triggered = float(field_value) <= float(value)
+            elif operator == 'between':
+                triggered = float(value) <= float(field_value) <= float(value2)
+            elif operator == 'in_list' or operator == 'in':
+                triggered = field_value in value if isinstance(value, list) else field_value == value
+        except (ValueError, TypeError):
+            continue
+        
+        if triggered:
+            total_risk_score += band.risk_score
+            total_loading_percentage += band.loading_percentage
+            applied_bands.append({
+                'band_id': band.id,
+                'band_name': band.name,
+                'category': band.category,
+                'loading_percentage': band.loading_percentage,
+                'risk_score': band.risk_score,
+                'condition_field': field,
+                'field_value': field_value
+            })
+    
+    base_premium = float(proposal.premium)
+    loaded_premium = base_premium * (1 + total_loading_percentage / 100)
+    
+    return RiskLoadingResult(
+        total_risk_score=total_risk_score,
+        total_loading_percentage=round(total_loading_percentage, 2),
+        base_premium=base_premium,
+        loaded_premium=round(loaded_premium, 2),
+        applied_bands=applied_bands
+    )
+
 # ==================== PRODUCT CRUD ====================
 @api_router.post("/products")
 def create_product(product_data: ProductCreate, db: Session = Depends(get_db)):
