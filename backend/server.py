@@ -61,6 +61,7 @@ class OperatorEnum(str, Enum):
     GREATER_THAN_OR_EQUAL = "greater_than_or_equal"
     LESS_THAN_OR_EQUAL = "less_than_or_equal"
     IN = "in"
+    IN_LIST = "in_list"  # Alias for IN for rule clarity
     NOT_IN = "not_in"
     BETWEEN = "between"
     CONTAINS = "contains"
