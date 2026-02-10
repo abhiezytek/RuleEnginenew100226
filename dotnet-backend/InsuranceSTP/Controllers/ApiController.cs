@@ -828,4 +828,18 @@ public class ApiController : ControllerBase
         performed_by = a.PerformedBy,
         performed_at = a.PerformedAt
     };
+    
+    private static object ToStageResponse(RuleStage s, int ruleCount) => new
+    {
+        id = s.Id,
+        name = s.Name,
+        description = s.Description,
+        execution_order = s.ExecutionOrder,
+        stop_on_fail = s.StopOnFail,
+        color = s.Color,
+        is_enabled = s.IsEnabled,
+        rule_count = ruleCount,
+        created_at = s.CreatedAt,
+        updated_at = s.UpdatedAt
+    };
 }
