@@ -1460,6 +1460,9 @@ def evaluate_proposal(proposal: ProposalData, db: Session = Depends(get_db)):
                     scorecard_value += cell['score_impact']
                 break
     
+    # Calculate Risk Loading
+    risk_loading = calculate_risk_loading(db, proposal)
+    
     execution_time = (time.time() - start_time) * 1000
     
     result = EvaluationResult(
@@ -1475,6 +1478,7 @@ def evaluate_proposal(proposal: ProposalData, db: Session = Depends(get_db)):
         reason_messages=list(set(reason_messages)),
         rule_trace=rule_trace,
         stage_trace=stage_trace,
+        risk_loading=risk_loading,
         evaluation_time_ms=round(execution_time, 2),
         evaluated_at=datetime.now(timezone.utc).isoformat()
     )
