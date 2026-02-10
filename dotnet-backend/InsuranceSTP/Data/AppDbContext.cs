@@ -8,6 +8,7 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
     
     public DbSet<Rule> Rules { get; set; }
+    public DbSet<RuleStage> RuleStages { get; set; }
     public DbSet<Scorecard> Scorecards { get; set; }
     public DbSet<Grid> Grids { get; set; }
     public DbSet<Product> Products { get; set; }
@@ -23,6 +24,12 @@ public class AppDbContext : DbContext
         
         modelBuilder.Entity<Rule>()
             .HasIndex(r => r.Priority);
+        
+        modelBuilder.Entity<Rule>()
+            .HasIndex(r => r.StageId);
+        
+        modelBuilder.Entity<RuleStage>()
+            .HasIndex(s => s.ExecutionOrder);
         
         modelBuilder.Entity<Scorecard>()
             .HasIndex(s => s.Product);
