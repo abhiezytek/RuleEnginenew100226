@@ -169,11 +169,13 @@ const RuleBuilder = () => {
 
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
+  const [stages, setStages] = useState([]);
 
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     category: 'stp_decision',
+    stage_id: null,
     priority: 100,
     is_enabled: true,
     effective_from: '',
@@ -196,10 +198,20 @@ const RuleBuilder = () => {
   });
 
   useEffect(() => {
+    fetchStages();
     if (isEdit) {
       fetchRule();
     }
   }, [id]);
+
+  const fetchStages = async () => {
+    try {
+      const response = await getStages();
+      setStages(response.data);
+    } catch (error) {
+      console.error('Failed to fetch stages:', error);
+    }
+  };
 
   const fetchRule = async () => {
     try {
