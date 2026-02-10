@@ -96,6 +96,7 @@ class RuleModel(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     category = Column(String(50), nullable=False)
+    stage_id = Column(String(36), nullable=True)  # Foreign key to rule_stages
     condition_group = Column(JSON, nullable=False)
     action = Column(JSON, nullable=False)
     priority = Column(Integer, default=100)
@@ -105,6 +106,19 @@ class RuleModel(Base):
     products = Column(JSON, default=list)
     case_types = Column(JSON, default=list)
     version = Column(Integer, default=1)
+    created_at = Column(String(50), default=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at = Column(String(50), default=lambda: datetime.now(timezone.utc).isoformat())
+
+class RuleStageModel(Base):
+    __tablename__ = "rule_stages"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    execution_order = Column(Integer, default=1)  # Lower = earlier execution
+    stop_on_fail = Column(Boolean, default=False)  # Stop evaluation if any rule in stage fails
+    color = Column(String(20), default="slate")  # UI color
+    is_enabled = Column(Boolean, default=True)
     created_at = Column(String(50), default=lambda: datetime.now(timezone.utc).isoformat())
     updated_at = Column(String(50), default=lambda: datetime.now(timezone.utc).isoformat())
 
