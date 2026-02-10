@@ -52,7 +52,9 @@ export const REASON_FLAGS = [
 
 // Product Types
 export const PRODUCT_TYPES = [
-  { value: 'term_life', label: 'Term Life', color: 'blue' },
+  { value: 'term_life', label: 'Term Life (Parent)', color: 'blue', isParent: true },
+  { value: 'term_pure', label: 'Pure Term', color: 'blue', parent: 'term_life' },
+  { value: 'term_returns', label: 'Term with Returns', color: 'cyan', parent: 'term_life' },
   { value: 'endowment', label: 'Endowment', color: 'emerald' },
   { value: 'ulip', label: 'ULIP', color: 'purple' },
 ];
@@ -74,6 +76,13 @@ export const AVAILABLE_FIELDS = [
   { value: 'has_medical_history', label: 'Has Medical History', type: 'boolean' },
   { value: 'existing_coverage', label: 'Existing Coverage', type: 'number' },
   { value: 'product_type', label: 'Product Type', type: 'string' },
+  // Conditional fields (dependent on parent questions)
+  { value: 'cigarettes_per_day', label: 'Cigarettes per Day', type: 'number', dependsOn: 'is_smoker' },
+  { value: 'smoking_years', label: 'Smoking Years', type: 'number', dependsOn: 'is_smoker' },
+  { value: 'ailment_type', label: 'Ailment Type', type: 'string', dependsOn: 'has_medical_history' },
+  { value: 'ailment_details', label: 'Ailment Details', type: 'string', dependsOn: 'has_medical_history' },
+  { value: 'ailment_duration_years', label: 'Ailment Duration (Years)', type: 'number', dependsOn: 'has_medical_history' },
+  { value: 'is_ailment_ongoing', label: 'Is Ailment Ongoing', type: 'boolean', dependsOn: 'has_medical_history' },
 ];
 
 // Grid Types
