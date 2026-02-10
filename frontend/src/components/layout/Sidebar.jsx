@@ -11,7 +11,8 @@ import {
   Package,
   ChevronLeft,
   ChevronRight,
-  Shield
+  Shield,
+  Layers
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
@@ -20,6 +21,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Rule Builder', href: '/rules/new', icon: FileCode2 },
   { name: 'Rules List', href: '/rules', icon: ListChecks },
+  { name: 'Stages', href: '/stages', icon: Layers },
   { name: 'Scorecards', href: '/scorecards', icon: Calculator },
   { name: 'Grids', href: '/grids', icon: Grid3X3 },
   { name: 'Evaluation', href: '/evaluate', icon: PlayCircle },
