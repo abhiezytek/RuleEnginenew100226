@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { getStages, createStage, updateStage, deleteStage, toggleStage, getRulesByStage } from '../lib/api';
-import LoadingSpinner from '../components/shared/LoadingSpinner';
+import { LoadingSpinner } from '../components/shared/LoadingSpinner';
 
 const STAGE_COLORS = [
   { value: 'slate', label: 'Slate', class: 'bg-slate-100 text-slate-800 border-slate-300' },
