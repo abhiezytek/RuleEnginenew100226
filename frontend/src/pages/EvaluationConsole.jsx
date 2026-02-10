@@ -38,8 +38,8 @@ const EvaluationConsole = () => {
 
   const [proposal, setProposal] = useState({
     proposal_id: `PROP-${Date.now()}`,
-    product_code: 'TERM001',
-    product_type: 'term_life',
+    product_code: 'TERM_PURE',
+    product_type: 'term_pure',
     applicant_age: 35,
     applicant_gender: 'M',
     applicant_income: 1200000,
@@ -53,7 +53,14 @@ const EvaluationConsole = () => {
     pincode: '560001',
     is_smoker: false,
     has_medical_history: false,
-    existing_coverage: 0
+    existing_coverage: 0,
+    // Conditional fields
+    cigarettes_per_day: null,
+    smoking_years: null,
+    ailment_type: null,
+    ailment_details: null,
+    ailment_duration_years: null,
+    is_ailment_ongoing: false
   });
 
   useEffect(() => {
