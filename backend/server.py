@@ -435,6 +435,7 @@ class RuleEngine:
             OperatorEnum.GREATER_THAN_OR_EQUAL: lambda a, b, _: float(a) >= float(b) if a is not None and b is not None else False,
             OperatorEnum.LESS_THAN_OR_EQUAL: lambda a, b, _: float(a) <= float(b) if a is not None and b is not None else False,
             OperatorEnum.IN: lambda a, b, _: a in b if isinstance(b, list) else a == b,
+            OperatorEnum.IN_LIST: lambda a, b, _: a in b if isinstance(b, list) else a == b,
             OperatorEnum.NOT_IN: lambda a, b, _: a not in b if isinstance(b, list) else a != b,
             OperatorEnum.BETWEEN: lambda a, b, c: float(b) <= float(a) <= float(c) if a is not None and b is not None and c is not None else False,
             OperatorEnum.CONTAINS: lambda a, b, _: str(b).lower() in str(a).lower() if a and b else False,
