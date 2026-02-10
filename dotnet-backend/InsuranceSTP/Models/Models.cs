@@ -629,9 +629,16 @@ public class RiskBand
 // Risk Band DTOs
 public class RiskBandCondition
 {
+    [JsonPropertyName("field")]
     public string Field { get; set; } = string.Empty;
+    
+    [JsonPropertyName("operator")]
     public string Operator { get; set; } = "equals";
+    
+    [JsonPropertyName("value")]
     public object? Value { get; set; }
+    
+    [JsonPropertyName("value2")]
     public object? Value2 { get; set; }
 }
 
