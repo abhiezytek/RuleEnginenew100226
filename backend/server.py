@@ -1750,6 +1750,7 @@ def seed_sample_data(db: Session = Depends(get_db)):
         "message": "Sample data seeded successfully",
         "products": len(products),
         "rules": len(all_rules),
+        "stages": 4,
         "scorecards": 1,
         "grids": len(grids)
     }
