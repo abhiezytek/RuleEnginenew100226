@@ -986,58 +986,42 @@ def evaluate_proposal(proposal: ProposalData, db: Session = Depends(get_db)):
     reason_codes = []
     reason_messages = []
     rule_trace = []
+    stage_trace = []
     
     proposal_dict = proposal.model_dump()
     
-    # Get all enabled rules sorted by priority
-    rules = db.query(RuleModel).filter(RuleModel.is_enabled == True).order_by(RuleModel.priority).all()
+    # Get all stages ordered by execution_order
+    stages = db.query(RuleStageModel).filter(RuleStageModel.is_enabled == True).order_by(RuleStageModel.execution_order).all()
     
-    # Phase 1: Validation Rules
-    validation_rules = [r for r in rules if r.category == RuleCategoryEnum.VALIDATION.value]
-    for rule in validation_rules:
-        rule_start = time.time()
-        rule_dict = model_to_dict(rule)
-        
-        if not rule_engine.is_rule_applicable(rule_dict, proposal.product_type.value, case_type):
+    # Get all enabled rules
+    all_rules = db.query(RuleModel).filter(RuleModel.is_enabled == True).all()
+    
+    should_stop_processing = False
+    
+    # Process each stage in order
+    for stage in stages:
+        if should_stop_processing:
+            # Add skipped stage to trace
+            stage_trace.append(StageExecutionTrace(
+                stage_id=stage.id,
+                stage_name=stage.name,
+                execution_order=stage.execution_order,
+                status="skipped",
+                rules_executed=[],
+                triggered_rules_count=0,
+                execution_time_ms=0
+            ))
             continue
         
-        condition_group = rule.condition_group
-        triggered = rule_engine.evaluate_condition_group(condition_group, proposal_dict)
+        stage_start = time.time()
+        stage_rules = [r for r in all_rules if r.stage_id == stage.id]
+        stage_rules.sort(key=lambda r: r.priority)
         
-        input_vals = {}
-        for cond in condition_group.get('conditions', []):
-            if isinstance(cond, dict) and 'field' in cond:
-                input_vals[cond['field']] = rule_engine.get_field_value(proposal_dict, cond['field'])
+        stage_rule_trace = []
+        stage_triggered_count = 0
+        stage_has_fail = False
         
-        trace_entry = RuleExecutionTrace(
-            rule_id=rule.id,
-            rule_name=rule.name,
-            category=rule.category,
-            triggered=triggered,
-            input_values=input_vals,
-            condition_result=triggered,
-            action_applied=rule.action if triggered else None,
-            execution_time_ms=(time.time() - rule_start) * 1000
-        )
-        rule_trace.append(trace_entry)
-        
-        if triggered:
-            action = rule.action or {}
-            if action.get('reason_message'):
-                validation_errors.append(action['reason_message'])
-            if action.get('reason_code'):
-                reason_codes.append(action['reason_code'])
-            triggered_rules.append(rule.name)
-            
-            if action.get('is_hard_stop'):
-                stp_decision = "FAIL"
-                case_type = CaseTypeEnum.DIRECT_FAIL.value
-                reason_flag = ReasonFlagEnum.STP_FAIL_PRINT.value
-    
-    # Phase 2: STP Decision Rules
-    if stp_decision == "PASS":
-        stp_rules = [r for r in rules if r.category == RuleCategoryEnum.STP_DECISION.value]
-        for rule in stp_rules:
+        for rule in stage_rules:
             rule_start = time.time()
             rule_dict = model_to_dict(rule)
             
@@ -1062,26 +1046,150 @@ def evaluate_proposal(proposal: ProposalData, db: Session = Depends(get_db)):
                 action_applied=rule.action if triggered else None,
                 execution_time_ms=(time.time() - rule_start) * 1000
             )
+            
+            stage_rule_trace.append(trace_entry)
             rule_trace.append(trace_entry)
             
             if triggered:
+                stage_triggered_count += 1
                 action = rule.action or {}
                 triggered_rules.append(rule.name)
                 
+                # Handle validation errors
+                if rule.category == RuleCategoryEnum.VALIDATION.value and action.get('reason_message'):
+                    validation_errors.append(action['reason_message'])
+                
+                # Handle decisions
                 if action.get('decision') == "FAIL":
                     stp_decision = "FAIL"
                     reason_flag = ReasonFlagEnum.STP_FAIL_PRINT.value
+                    stage_has_fail = True
                 
+                # Handle case type
+                if action.get('case_type') is not None:
+                    case_type = action['case_type']
+                
+                # Handle score impact
+                if action.get('score_impact') is not None:
+                    scorecard_value += action['score_impact']
+                
+                # Collect reason codes/messages
                 if action.get('reason_code'):
                     reason_codes.append(action['reason_code'])
                 if action.get('reason_message'):
                     reason_messages.append(action['reason_message'])
                 
+                # Hard stop handling
                 if action.get('is_hard_stop'):
+                    stp_decision = "FAIL"
                     case_type = CaseTypeEnum.DIRECT_FAIL.value
+                    reason_flag = ReasonFlagEnum.STP_FAIL_PRINT.value
+                    stage_has_fail = True
+                    should_stop_processing = True
                     break
+        
+        stage_exec_time = (time.time() - stage_start) * 1000
+        
+        # Determine stage status
+        stage_status = "passed"
+        if stage_has_fail:
+            stage_status = "failed"
+            if stage.stop_on_fail:
+                should_stop_processing = True
+        
+        stage_trace.append(StageExecutionTrace(
+            stage_id=stage.id,
+            stage_name=stage.name,
+            execution_order=stage.execution_order,
+            status=stage_status,
+            rules_executed=stage_rule_trace,
+            triggered_rules_count=stage_triggered_count,
+            execution_time_ms=round(stage_exec_time, 2)
+        ))
     
-    # Phase 3: Scorecard Evaluation
+    # Process unassigned rules (rules without a stage) - processed last
+    if not should_stop_processing:
+        unassigned_start = time.time()
+        unassigned_rules = [r for r in all_rules if r.stage_id is None]
+        unassigned_rules.sort(key=lambda r: r.priority)
+        
+        if unassigned_rules:
+            unassigned_rule_trace = []
+            unassigned_triggered_count = 0
+            unassigned_has_fail = False
+            
+            for rule in unassigned_rules:
+                rule_start = time.time()
+                rule_dict = model_to_dict(rule)
+                
+                if not rule_engine.is_rule_applicable(rule_dict, proposal.product_type.value, case_type):
+                    continue
+                
+                condition_group = rule.condition_group
+                triggered = rule_engine.evaluate_condition_group(condition_group, proposal_dict)
+                
+                input_vals = {}
+                for cond in condition_group.get('conditions', []):
+                    if isinstance(cond, dict) and 'field' in cond:
+                        input_vals[cond['field']] = rule_engine.get_field_value(proposal_dict, cond['field'])
+                
+                trace_entry = RuleExecutionTrace(
+                    rule_id=rule.id,
+                    rule_name=rule.name,
+                    category=rule.category,
+                    triggered=triggered,
+                    input_values=input_vals,
+                    condition_result=triggered,
+                    action_applied=rule.action if triggered else None,
+                    execution_time_ms=(time.time() - rule_start) * 1000
+                )
+                
+                unassigned_rule_trace.append(trace_entry)
+                rule_trace.append(trace_entry)
+                
+                if triggered:
+                    unassigned_triggered_count += 1
+                    action = rule.action or {}
+                    triggered_rules.append(rule.name)
+                    
+                    if rule.category == RuleCategoryEnum.VALIDATION.value and action.get('reason_message'):
+                        validation_errors.append(action['reason_message'])
+                    
+                    if action.get('decision') == "FAIL":
+                        stp_decision = "FAIL"
+                        reason_flag = ReasonFlagEnum.STP_FAIL_PRINT.value
+                        unassigned_has_fail = True
+                    
+                    if action.get('case_type') is not None:
+                        case_type = action['case_type']
+                    
+                    if action.get('score_impact') is not None:
+                        scorecard_value += action['score_impact']
+                    
+                    if action.get('reason_code'):
+                        reason_codes.append(action['reason_code'])
+                    if action.get('reason_message'):
+                        reason_messages.append(action['reason_message'])
+                    
+                    if action.get('is_hard_stop'):
+                        stp_decision = "FAIL"
+                        case_type = CaseTypeEnum.DIRECT_FAIL.value
+                        reason_flag = ReasonFlagEnum.STP_FAIL_PRINT.value
+                        break
+            
+            unassigned_exec_time = (time.time() - unassigned_start) * 1000
+            
+            stage_trace.append(StageExecutionTrace(
+                stage_id="unassigned",
+                stage_name="Unassigned Rules",
+                execution_order=999,
+                status="failed" if unassigned_has_fail else "passed",
+                rules_executed=unassigned_rule_trace,
+                triggered_rules_count=unassigned_triggered_count,
+                execution_time_ms=round(unassigned_exec_time, 2)
+            ))
+    
+    # Legacy: Scorecard Evaluation (if no stage rules affected score)
     scorecards = db.query(ScorecardModel).filter(
         ScorecardModel.product == proposal.product_type.value,
         ScorecardModel.is_enabled == True
@@ -1106,48 +1214,7 @@ def evaluate_proposal(proposal: ProposalData, db: Session = Depends(get_db)):
         elif scorecard_value < scorecard.threshold_refer:
             case_type = CaseTypeEnum.GCRP.value
     
-    # Phase 4: Case Type Rules
-    case_type_rules = [r for r in rules if r.category == RuleCategoryEnum.CASE_TYPE.value]
-    for rule in case_type_rules:
-        rule_start = time.time()
-        rule_dict = model_to_dict(rule)
-        
-        if not rule_engine.is_rule_applicable(rule_dict, proposal.product_type.value, case_type):
-            continue
-        
-        condition_group = rule.condition_group
-        triggered = rule_engine.evaluate_condition_group(condition_group, proposal_dict)
-        
-        input_vals = {}
-        for cond in condition_group.get('conditions', []):
-            if isinstance(cond, dict) and 'field' in cond:
-                input_vals[cond['field']] = rule_engine.get_field_value(proposal_dict, cond['field'])
-        
-        trace_entry = RuleExecutionTrace(
-            rule_id=rule.id,
-            rule_name=rule.name,
-            category=rule.category,
-            triggered=triggered,
-            input_values=input_vals,
-            condition_result=triggered,
-            action_applied=rule.action if triggered else None,
-            execution_time_ms=(time.time() - rule_start) * 1000
-        )
-        rule_trace.append(trace_entry)
-        
-        if triggered:
-            action = rule.action or {}
-            triggered_rules.append(rule.name)
-            
-            if action.get('case_type') is not None:
-                case_type = action['case_type']
-            
-            if action.get('reason_code'):
-                reason_codes.append(action['reason_code'])
-            if action.get('reason_message'):
-                reason_messages.append(action['reason_message'])
-    
-    # Phase 5: Grid Evaluations
+    # Legacy: Grid Evaluations
     grids = db.query(GridModel).filter(GridModel.is_enabled == True).all()
     
     for grid in grids:
@@ -1186,6 +1253,7 @@ def evaluate_proposal(proposal: ProposalData, db: Session = Depends(get_db)):
         reason_codes=list(set(reason_codes)),
         reason_messages=list(set(reason_messages)),
         rule_trace=rule_trace,
+        stage_trace=stage_trace,
         evaluation_time_ms=round(execution_time, 2),
         evaluated_at=datetime.now(timezone.utc).isoformat()
     )
