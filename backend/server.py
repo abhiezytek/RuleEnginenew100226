@@ -570,6 +570,7 @@ def get_rules(
     product: Optional[str] = None,
     is_enabled: Optional[bool] = None,
     search: Optional[str] = None,
+    stage_id: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(RuleModel)
@@ -578,6 +579,8 @@ def get_rules(
         query = query.filter(RuleModel.category == category)
     if is_enabled is not None:
         query = query.filter(RuleModel.is_enabled == is_enabled)
+    if stage_id:
+        query = query.filter(RuleModel.stage_id == stage_id)
     if search:
         query = query.filter(
             (RuleModel.name.ilike(f"%{search}%")) | 
@@ -589,14 +592,14 @@ def get_rules(
     if product:
         rules = [r for r in rules if product in (r.products or [])]
     
-    return [model_to_dict(r) for r in rules]
+    return [rule_to_response(db, r) for r in rules]
 
 @api_router.get("/rules/{rule_id}", response_model=RuleResponse)
 def get_rule(rule_id: str, db: Session = Depends(get_db)):
     rule = db.query(RuleModel).filter(RuleModel.id == rule_id).first()
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
-    return model_to_dict(rule)
+    return rule_to_response(db, rule)
 
 @api_router.put("/rules/{rule_id}", response_model=RuleResponse)
 def update_rule(rule_id: str, rule_data: RuleUpdate, db: Session = Depends(get_db)):
