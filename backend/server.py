@@ -162,11 +162,13 @@ class ProductModel(Base):
     name = Column(String(255), nullable=False)
     product_type = Column(String(50), nullable=False)
     description = Column(Text, nullable=True)
+    parent_product_id = Column(String(36), nullable=True)  # For sub-products
     min_age = Column(Integer, default=18)
     max_age = Column(Integer, default=65)
     min_sum_assured = Column(Integer, default=100000)
     max_sum_assured = Column(Integer, default=10000000)
     min_premium = Column(Integer, default=1000)
+    has_maturity_benefit = Column(Boolean, default=False)  # For Term with Returns
     is_enabled = Column(Boolean, default=True)
     created_at = Column(String(50), default=lambda: datetime.now(timezone.utc).isoformat())
 
