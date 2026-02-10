@@ -732,24 +732,33 @@ public class ApiController : ControllerBase
         await _context.SaveChangesAsync();
     }
     
-    private static object ToRuleResponse(Rule r) => new
+    private object ToRuleResponse(Rule r)
     {
-        id = r.Id,
-        name = r.Name,
-        description = r.Description,
-        category = r.Category,
-        condition_group = JsonSerializer.Deserialize<object>(r.ConditionGroupJson),
-        action = JsonSerializer.Deserialize<object>(r.ActionJson),
-        priority = r.Priority,
-        is_enabled = r.IsEnabled,
-        effective_from = r.EffectiveFrom,
-        effective_to = r.EffectiveTo,
-        products = r.Products,
-        case_types = r.CaseTypes,
-        version = r.Version,
-        created_at = r.CreatedAt,
-        updated_at = r.UpdatedAt
-    };
+        var stageName = r.StageId != null 
+            ? _context.RuleStages.FirstOrDefault(s => s.Id == r.StageId)?.Name 
+            : null;
+        
+        return new
+        {
+            id = r.Id,
+            name = r.Name,
+            description = r.Description,
+            category = r.Category,
+            stage_id = r.StageId,
+            stage_name = stageName,
+            condition_group = JsonSerializer.Deserialize<object>(r.ConditionGroupJson),
+            action = JsonSerializer.Deserialize<object>(r.ActionJson),
+            priority = r.Priority,
+            is_enabled = r.IsEnabled,
+            effective_from = r.EffectiveFrom,
+            effective_to = r.EffectiveTo,
+            products = r.Products,
+            case_types = r.CaseTypes,
+            version = r.Version,
+            created_at = r.CreatedAt,
+            updated_at = r.UpdatedAt
+        };
+    }
     
     private static object ToScorecardResponse(Scorecard s) => new
     {
