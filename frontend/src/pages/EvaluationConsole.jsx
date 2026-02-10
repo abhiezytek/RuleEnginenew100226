@@ -170,14 +170,23 @@ const EvaluationConsole = () => {
                     <Label>Product Type</Label>
                     <Select 
                       value={proposal.product_type} 
-                      onValueChange={(v) => setProposal({ ...proposal, product_type: v })}
+                      onValueChange={(v) => {
+                        const product = PRODUCT_TYPES.find(p => p.value === v);
+                        setProposal({ 
+                          ...proposal, 
+                          product_type: v,
+                          product_code: v.toUpperCase().replace('_', '_')
+                        });
+                      }}
                     >
                       <SelectTrigger className="mt-1.5" data-testid="product-type-select">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {PRODUCT_TYPES.map(p => (
-                          <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                        {PRODUCT_TYPES.filter(p => !p.isParent).map(p => (
+                          <SelectItem key={p.value} value={p.value}>
+                            {p.parent ? `↳ ${p.label}` : p.label}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
