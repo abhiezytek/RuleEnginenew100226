@@ -2217,6 +2217,187 @@ def seed_sample_data(db: Session = Depends(get_db)):
     for g in grids:
         db.add(g)
     
+    # Sample Risk Bands for Premium Loading
+    risk_bands = [
+        # Age-based loading
+        RiskBandModel(
+            name="Young Adult (18-25)",
+            description="Lower risk for young adults",
+            category="age",
+            condition={"field": "applicant_age", "operator": "between", "value": 18, "value2": 25},
+            loading_percentage=-5,  # 5% discount
+            risk_score=-10,
+            products=["term_pure", "term_returns", "term_life"],
+            priority=10
+        ),
+        RiskBandModel(
+            name="Prime Age (26-40)",
+            description="Standard rate for prime age group",
+            category="age",
+            condition={"field": "applicant_age", "operator": "between", "value": 26, "value2": 40},
+            loading_percentage=0,
+            risk_score=0,
+            products=["term_pure", "term_returns", "term_life"],
+            priority=10
+        ),
+        RiskBandModel(
+            name="Middle Age (41-50)",
+            description="Moderate loading for middle age",
+            category="age",
+            condition={"field": "applicant_age", "operator": "between", "value": 41, "value2": 50},
+            loading_percentage=15,
+            risk_score=15,
+            products=["term_pure", "term_returns", "term_life"],
+            priority=10
+        ),
+        RiskBandModel(
+            name="Senior (51-60)",
+            description="Higher loading for seniors",
+            category="age",
+            condition={"field": "applicant_age", "operator": "between", "value": 51, "value2": 60},
+            loading_percentage=35,
+            risk_score=30,
+            products=["term_pure", "term_returns", "term_life"],
+            priority=10
+        ),
+        RiskBandModel(
+            name="Elder (60+)",
+            description="Maximum loading for 60+",
+            category="age",
+            condition={"field": "applicant_age", "operator": "greater_than", "value": 60},
+            loading_percentage=75,
+            risk_score=50,
+            products=["term_pure", "term_life"],
+            priority=10
+        ),
+        # Smoking-based loading
+        RiskBandModel(
+            name="Smoker Base Loading",
+            description="Base loading for all smokers",
+            category="smoking",
+            condition={"field": "is_smoker", "operator": "equals", "value": True},
+            loading_percentage=25,
+            risk_score=25,
+            products=["term_pure", "term_returns", "term_life", "endowment"],
+            priority=20
+        ),
+        RiskBandModel(
+            name="Heavy Smoker (>20/day)",
+            description="Additional loading for heavy smokers",
+            category="smoking",
+            condition={"field": "cigarettes_per_day", "operator": "greater_than", "value": 20},
+            loading_percentage=30,
+            risk_score=35,
+            products=["term_pure", "term_returns", "term_life"],
+            priority=21
+        ),
+        RiskBandModel(
+            name="Long-term Smoker (>10 years)",
+            description="Additional loading for long-term smokers",
+            category="smoking",
+            condition={"field": "smoking_years", "operator": "greater_than", "value": 10},
+            loading_percentage=20,
+            risk_score=20,
+            products=["term_pure", "term_returns", "term_life"],
+            priority=22
+        ),
+        # Medical history loading
+        RiskBandModel(
+            name="Diabetes - Ongoing",
+            description="Loading for ongoing diabetes",
+            category="medical",
+            condition={"field": "ailment_type", "operator": "equals", "value": "diabetes"},
+            loading_percentage=40,
+            risk_score=40,
+            products=["term_pure", "term_returns", "term_life", "endowment"],
+            priority=30
+        ),
+        RiskBandModel(
+            name="Hypertension",
+            description="Loading for hypertension",
+            category="medical",
+            condition={"field": "ailment_type", "operator": "equals", "value": "hypertension"},
+            loading_percentage=30,
+            risk_score=30,
+            products=["term_pure", "term_returns", "term_life", "endowment"],
+            priority=30
+        ),
+        RiskBandModel(
+            name="Thyroid",
+            description="Loading for thyroid conditions",
+            category="medical",
+            condition={"field": "ailment_type", "operator": "equals", "value": "thyroid"},
+            loading_percentage=15,
+            risk_score=15,
+            products=["term_pure", "term_returns", "term_life", "endowment"],
+            priority=30
+        ),
+        RiskBandModel(
+            name="Asthma",
+            description="Loading for asthma",
+            category="medical",
+            condition={"field": "ailment_type", "operator": "equals", "value": "asthma"},
+            loading_percentage=20,
+            risk_score=20,
+            products=["term_pure", "term_returns", "term_life", "endowment"],
+            priority=30
+        ),
+        # BMI-based loading
+        RiskBandModel(
+            name="Underweight (BMI < 18.5)",
+            description="Loading for underweight applicants",
+            category="bmi",
+            condition={"field": "bmi", "operator": "less_than", "value": 18.5},
+            loading_percentage=10,
+            risk_score=10,
+            products=["term_pure", "term_returns", "term_life"],
+            priority=40
+        ),
+        RiskBandModel(
+            name="Overweight (BMI 25-30)",
+            description="Loading for overweight applicants",
+            category="bmi",
+            condition={"field": "bmi", "operator": "between", "value": 25, "value2": 30},
+            loading_percentage=10,
+            risk_score=10,
+            products=["term_pure", "term_returns", "term_life"],
+            priority=40
+        ),
+        RiskBandModel(
+            name="Obese (BMI > 30)",
+            description="Higher loading for obese applicants",
+            category="bmi",
+            condition={"field": "bmi", "operator": "greater_than", "value": 30},
+            loading_percentage=25,
+            risk_score=25,
+            products=["term_pure", "term_returns", "term_life"],
+            priority=40
+        ),
+        # Occupation risk loading
+        RiskBandModel(
+            name="High Risk Occupation",
+            description="Loading for high-risk occupations",
+            category="occupation",
+            condition={"field": "occupation_risk", "operator": "equals", "value": "high"},
+            loading_percentage=50,
+            risk_score=40,
+            products=["term_pure", "term_returns", "term_life"],
+            priority=50
+        ),
+        RiskBandModel(
+            name="Medium Risk Occupation",
+            description="Loading for medium-risk occupations",
+            category="occupation",
+            condition={"field": "occupation_risk", "operator": "equals", "value": "medium"},
+            loading_percentage=20,
+            risk_score=15,
+            products=["term_pure", "term_returns", "term_life"],
+            priority=50
+        )
+    ]
+    for rb in risk_bands:
+        db.add(rb)
+    
     db.commit()
     
     return {
@@ -2225,7 +2406,8 @@ def seed_sample_data(db: Session = Depends(get_db)):
         "rules": len(all_rules),
         "stages": 4,
         "scorecards": 1,
-        "grids": len(grids)
+        "grids": len(grids),
+        "risk_bands": len(risk_bands)
     }
 
 # Include the router
