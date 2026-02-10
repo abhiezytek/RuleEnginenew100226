@@ -445,6 +445,7 @@ public class EvaluationResult
     public List<string> ReasonCodes { get; set; } = new();
     public List<string> ReasonMessages { get; set; } = new();
     public List<RuleExecutionTrace> RuleTrace { get; set; } = new();
+    public List<StageExecutionTrace> StageTrace { get; set; } = new();
     public double EvaluationTimeMs { get; set; }
     public string EvaluatedAt { get; set; } = DateTime.UtcNow.ToString("o");
 }
