@@ -89,6 +89,14 @@ export const deleteStage = (id) => api.delete(`/stages/${id}`);
 export const toggleStage = (id) => api.patch(`/stages/${id}/toggle`);
 export const getRulesByStage = (stageId) => api.get(`/stages/${stageId}/rules`);
 
+// Risk Bands API
+export const getRiskBands = (category) => api.get('/risk-bands', { params: { category } });
+export const getRiskBand = (id) => api.get(`/risk-bands/${id}`);
+export const createRiskBand = (data) => api.post('/risk-bands', data);
+export const updateRiskBand = (id, data) => api.put(`/risk-bands/${id}`, data);
+export const deleteRiskBand = (id) => api.delete(`/risk-bands/${id}`);
+export const toggleRiskBand = (id) => api.patch(`/risk-bands/${id}/toggle`);
+
 // Underwriting Evaluation API
 export const evaluateProposal = (data) => api.post('/underwriting/evaluate', data);
 
