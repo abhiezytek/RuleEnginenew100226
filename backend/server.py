@@ -548,6 +548,7 @@ def create_rule(rule_data: RuleCreate, db: Session = Depends(get_db)):
         name=rule_data.name,
         description=rule_data.description,
         category=rule_data.category.value,
+        stage_id=rule_data.stage_id,
         condition_group=rule_data.condition_group.model_dump(),
         action=rule_data.action.model_dump(),
         priority=rule_data.priority,
@@ -561,7 +562,7 @@ def create_rule(rule_data: RuleCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(rule)
     log_audit(db, "CREATE", "rule", rule.id, rule.name)
-    return model_to_dict(rule)
+    return rule_to_response(db, rule)
 
 @api_router.get("/rules", response_model=List[RuleResponse])
 def get_rules(
