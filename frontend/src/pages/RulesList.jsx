@@ -200,6 +200,7 @@ const RulesList = () => {
                       <th className="text-left py-3 px-4 font-semibold text-slate-600">Status</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-600">Name</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-600">Category</th>
+                      <th className="text-left py-3 px-4 font-semibold text-slate-600">Stage</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-600">Products</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-600">Priority</th>
                       <th className="text-left py-3 px-4 font-semibold text-slate-600">Version</th>
@@ -232,6 +233,15 @@ const RulesList = () => {
                         </td>
                         <td className="py-3 px-4">
                           <CategoryBadge category={rule.category} />
+                        </td>
+                        <td className="py-3 px-4">
+                          {rule.stage_name ? (
+                            <span className="text-xs px-2 py-1 bg-slate-100 text-slate-700 rounded-full truncate max-w-[120px] inline-block">
+                              {rule.stage_name}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">Unassigned</span>
+                          )}
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex flex-wrap gap-1">
