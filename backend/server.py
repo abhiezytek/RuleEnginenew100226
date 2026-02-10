@@ -376,6 +376,45 @@ class GridCreate(BaseModel):
     products: List[ProductTypeEnum] = []
     is_enabled: bool = True
 
+# Risk Band Models
+class RiskBandCondition(BaseModel):
+    field: str  # e.g., "applicant_age", "cigarettes_per_day", "ailment_type"
+    operator: str  # "between", "equals", "greater_than", etc.
+    value: Any
+    value2: Optional[Any] = None  # For "between" operator
+
+class RiskBandCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    category: str  # age, smoking, medical, bmi, occupation
+    condition: RiskBandCondition
+    loading_percentage: float = 0  # Premium loading %
+    risk_score: int = 0  # Points to add
+    products: List[str] = []
+    priority: int = 100
+    is_enabled: bool = True
+
+class RiskBandResponse(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    category: str
+    condition: Dict[str, Any]
+    loading_percentage: float
+    risk_score: int
+    products: List[str]
+    priority: int
+    is_enabled: bool
+    created_at: str
+    updated_at: str
+
+class RiskLoadingResult(BaseModel):
+    total_risk_score: int
+    total_loading_percentage: float
+    base_premium: float
+    loaded_premium: float
+    applied_bands: List[Dict[str, Any]]
+
 class ProductCreate(BaseModel):
     code: str
     name: str
