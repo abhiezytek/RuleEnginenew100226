@@ -408,6 +408,7 @@ class EvaluationResult(BaseModel):
     reason_codes: List[str]
     reason_messages: List[str]
     rule_trace: List[RuleExecutionTrace]
+    stage_trace: List[StageExecutionTrace] = []
     evaluation_time_ms: float
     evaluated_at: str
 
