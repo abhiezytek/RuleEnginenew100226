@@ -234,6 +234,8 @@ public class Product
     
     public string? Description { get; set; }
     
+    public string? ParentProductId { get; set; }
+    
     public int MinAge { get; set; } = 18;
     
     public int MaxAge { get; set; } = 65;
@@ -243,6 +245,8 @@ public class Product
     public long MaxSumAssured { get; set; } = 10000000;
     
     public int MinPremium { get; set; } = 1000;
+    
+    public bool HasMaturityBenefit { get; set; } = false;
     
     public bool IsEnabled { get; set; } = true;
     
