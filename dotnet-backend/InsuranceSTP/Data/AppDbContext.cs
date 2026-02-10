@@ -9,6 +9,7 @@ public class AppDbContext : DbContext
     
     public DbSet<Rule> Rules { get; set; }
     public DbSet<RuleStage> RuleStages { get; set; }
+    public DbSet<RiskBand> RiskBands { get; set; }
     public DbSet<Scorecard> Scorecards { get; set; }
     public DbSet<Grid> Grids { get; set; }
     public DbSet<Product> Products { get; set; }
@@ -30,6 +31,12 @@ public class AppDbContext : DbContext
         
         modelBuilder.Entity<RuleStage>()
             .HasIndex(s => s.ExecutionOrder);
+        
+        modelBuilder.Entity<RiskBand>()
+            .HasIndex(r => r.Category);
+        
+        modelBuilder.Entity<RiskBand>()
+            .HasIndex(r => r.Priority);
         
         modelBuilder.Entity<Scorecard>()
             .HasIndex(s => s.Product);
