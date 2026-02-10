@@ -991,10 +991,10 @@ def evaluate_proposal(proposal: ProposalData, db: Session = Depends(get_db)):
     proposal_dict = proposal.model_dump()
     
     # Get all stages ordered by execution_order
-    stages = db.query(RuleStageModel).filter(RuleStageModel.is_enabled == True).order_by(RuleStageModel.execution_order).all()
+    stages = db.query(RuleStageModel).filter(RuleStageModel.is_enabled).order_by(RuleStageModel.execution_order).all()
     
     # Get all enabled rules
-    all_rules = db.query(RuleModel).filter(RuleModel.is_enabled == True).all()
+    all_rules = db.query(RuleModel).filter(RuleModel.is_enabled).all()
     
     should_stop_processing = False
     
