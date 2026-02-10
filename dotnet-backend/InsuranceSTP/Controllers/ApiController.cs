@@ -501,6 +501,7 @@ public class ApiController : ControllerBase
         var reasonCodes = new List<string>();
         var reasonMessages = new List<string>();
         var ruleTrace = new List<RuleExecutionTrace>();
+        var stageTrace = new List<StageExecutionTrace>();
         
         var proposalDict = new Dictionary<string, object?>
         {
@@ -523,52 +524,47 @@ public class ApiController : ControllerBase
             ["existing_coverage"] = proposal.ExistingCoverage
         };
         
-        var rules = await _context.Rules.Where(r => r.IsEnabled).OrderBy(r => r.Priority).ToListAsync();
+        // Get all stages ordered by execution order
+        var stages = await _context.RuleStages
+            .Where(s => s.IsEnabled)
+            .OrderBy(s => s.ExecutionOrder)
+            .ToListAsync();
         
-        // Phase 1: Validation Rules
-        foreach (var rule in rules.Where(r => r.Category == "validation"))
+        // Get all enabled rules
+        var allRules = await _context.Rules.Where(r => r.IsEnabled).ToListAsync();
+        
+        var shouldStopProcessing = false;
+        
+        // Process each stage in order
+        foreach (var stage in stages)
         {
-            var ruleStopwatch = Stopwatch.StartNew();
-            
-            if (!_ruleEngine.IsRuleApplicable(rule, proposal.ProductType, caseType))
-                continue;
-            
-            var conditionJson = JsonDocument.Parse(rule.ConditionGroupJson).RootElement;
-            var triggered = _ruleEngine.EvaluateConditionGroup(conditionJson, proposalDict);
-            
-            ruleTrace.Add(new RuleExecutionTrace
+            if (shouldStopProcessing)
             {
-                RuleId = rule.Id,
-                RuleName = rule.Name,
-                Category = rule.Category,
-                Triggered = triggered,
-                ConditionResult = triggered,
-                ActionApplied = triggered ? rule.Action : null,
-                ExecutionTimeMs = ruleStopwatch.Elapsed.TotalMilliseconds
-            });
-            
-            if (triggered)
-            {
-                var action = rule.Action;
-                if (!string.IsNullOrEmpty(action.ReasonMessage))
-                    validationErrors.Add(action.ReasonMessage);
-                if (!string.IsNullOrEmpty(action.ReasonCode))
-                    reasonCodes.Add(action.ReasonCode);
-                triggeredRules.Add(rule.Name);
-                
-                if (action.IsHardStop)
+                // Add skipped stage to trace
+                stageTrace.Add(new StageExecutionTrace
                 {
-                    stpDecision = "FAIL";
-                    caseType = -1;
-                    reasonFlag = 1;
-                }
+                    StageId = stage.Id,
+                    StageName = stage.Name,
+                    ExecutionOrder = stage.ExecutionOrder,
+                    Status = "skipped",
+                    RulesExecuted = new List<RuleExecutionTrace>(),
+                    TriggeredRulesCount = 0,
+                    ExecutionTimeMs = 0
+                });
+                continue;
             }
-        }
-        
-        // Phase 2: STP Decision Rules
-        if (stpDecision == "PASS")
-        {
-            foreach (var rule in rules.Where(r => r.Category == "stp_decision"))
+            
+            var stageStopwatch = Stopwatch.StartNew();
+            var stageRules = allRules
+                .Where(r => r.StageId == stage.Id)
+                .OrderBy(r => r.Priority)
+                .ToList();
+            
+            var stageRuleTrace = new List<RuleExecutionTrace>();
+            var stageTriggeredCount = 0;
+            var stageHasFail = false;
+            
+            foreach (var rule in stageRules)
             {
                 var ruleStopwatch = Stopwatch.StartNew();
                 
@@ -578,7 +574,7 @@ public class ApiController : ControllerBase
                 var conditionJson = JsonDocument.Parse(rule.ConditionGroupJson).RootElement;
                 var triggered = _ruleEngine.EvaluateConditionGroup(conditionJson, proposalDict);
                 
-                ruleTrace.Add(new RuleExecutionTrace
+                var trace = new RuleExecutionTrace
                 {
                     RuleId = rule.Id,
                     RuleName = rule.Name,
@@ -587,67 +583,167 @@ public class ApiController : ControllerBase
                     ConditionResult = triggered,
                     ActionApplied = triggered ? rule.Action : null,
                     ExecutionTimeMs = ruleStopwatch.Elapsed.TotalMilliseconds
-                });
+                };
+                
+                stageRuleTrace.Add(trace);
+                ruleTrace.Add(trace);
                 
                 if (triggered)
                 {
+                    stageTriggeredCount++;
                     var action = rule.Action;
                     triggeredRules.Add(rule.Name);
                     
+                    // Handle validation errors
+                    if (rule.Category == "validation" && !string.IsNullOrEmpty(action.ReasonMessage))
+                        validationErrors.Add(action.ReasonMessage);
+                    
+                    // Handle decisions
                     if (action.Decision == "FAIL")
                     {
                         stpDecision = "FAIL";
                         reasonFlag = 1;
+                        stageHasFail = true;
                     }
                     
+                    // Handle case type
+                    if (action.CaseType.HasValue)
+                        caseType = action.CaseType.Value;
+                    
+                    // Handle score impact
+                    if (action.ScoreImpact.HasValue)
+                        scorecardValue += action.ScoreImpact.Value;
+                    
+                    // Collect reason codes/messages
                     if (!string.IsNullOrEmpty(action.ReasonCode))
                         reasonCodes.Add(action.ReasonCode);
                     if (!string.IsNullOrEmpty(action.ReasonMessage))
                         reasonMessages.Add(action.ReasonMessage);
                     
+                    // Hard stop handling
                     if (action.IsHardStop)
                     {
+                        stpDecision = "FAIL";
                         caseType = -1;
+                        reasonFlag = 1;
+                        stageHasFail = true;
+                        shouldStopProcessing = true;
                         break;
                     }
                 }
             }
+            
+            stageStopwatch.Stop();
+            
+            // Determine stage status
+            var stageStatus = "passed";
+            if (stageHasFail)
+            {
+                stageStatus = "failed";
+                if (stage.StopOnFail)
+                    shouldStopProcessing = true;
+            }
+            
+            stageTrace.Add(new StageExecutionTrace
+            {
+                StageId = stage.Id,
+                StageName = stage.Name,
+                ExecutionOrder = stage.ExecutionOrder,
+                Status = stageStatus,
+                RulesExecuted = stageRuleTrace,
+                TriggeredRulesCount = stageTriggeredCount,
+                ExecutionTimeMs = Math.Round(stageStopwatch.Elapsed.TotalMilliseconds, 2)
+            });
         }
         
-        // Phase 3: Case Type Rules
-        foreach (var rule in rules.Where(r => r.Category == "case_type"))
+        // Process unassigned rules (rules without a stage) - processed last
+        if (!shouldStopProcessing)
         {
-            var ruleStopwatch = Stopwatch.StartNew();
+            var unassignedStageStopwatch = Stopwatch.StartNew();
+            var unassignedRules = allRules
+                .Where(r => r.StageId == null)
+                .OrderBy(r => r.Priority)
+                .ToList();
             
-            if (!_ruleEngine.IsRuleApplicable(rule, proposal.ProductType, caseType))
-                continue;
-            
-            var conditionJson = JsonDocument.Parse(rule.ConditionGroupJson).RootElement;
-            var triggered = _ruleEngine.EvaluateConditionGroup(conditionJson, proposalDict);
-            
-            ruleTrace.Add(new RuleExecutionTrace
+            if (unassignedRules.Any())
             {
-                RuleId = rule.Id,
-                RuleName = rule.Name,
-                Category = rule.Category,
-                Triggered = triggered,
-                ConditionResult = triggered,
-                ActionApplied = triggered ? rule.Action : null,
-                ExecutionTimeMs = ruleStopwatch.Elapsed.TotalMilliseconds
-            });
-            
-            if (triggered)
-            {
-                var action = rule.Action;
-                triggeredRules.Add(rule.Name);
+                var unassignedRuleTrace = new List<RuleExecutionTrace>();
+                var unassignedTriggeredCount = 0;
+                var unassignedHasFail = false;
                 
-                if (action.CaseType.HasValue)
-                    caseType = action.CaseType.Value;
+                foreach (var rule in unassignedRules)
+                {
+                    var ruleStopwatch = Stopwatch.StartNew();
+                    
+                    if (!_ruleEngine.IsRuleApplicable(rule, proposal.ProductType, caseType))
+                        continue;
+                    
+                    var conditionJson = JsonDocument.Parse(rule.ConditionGroupJson).RootElement;
+                    var triggered = _ruleEngine.EvaluateConditionGroup(conditionJson, proposalDict);
+                    
+                    var trace = new RuleExecutionTrace
+                    {
+                        RuleId = rule.Id,
+                        RuleName = rule.Name,
+                        Category = rule.Category,
+                        Triggered = triggered,
+                        ConditionResult = triggered,
+                        ActionApplied = triggered ? rule.Action : null,
+                        ExecutionTimeMs = ruleStopwatch.Elapsed.TotalMilliseconds
+                    };
+                    
+                    unassignedRuleTrace.Add(trace);
+                    ruleTrace.Add(trace);
+                    
+                    if (triggered)
+                    {
+                        unassignedTriggeredCount++;
+                        var action = rule.Action;
+                        triggeredRules.Add(rule.Name);
+                        
+                        if (rule.Category == "validation" && !string.IsNullOrEmpty(action.ReasonMessage))
+                            validationErrors.Add(action.ReasonMessage);
+                        
+                        if (action.Decision == "FAIL")
+                        {
+                            stpDecision = "FAIL";
+                            reasonFlag = 1;
+                            unassignedHasFail = true;
+                        }
+                        
+                        if (action.CaseType.HasValue)
+                            caseType = action.CaseType.Value;
+                        
+                        if (action.ScoreImpact.HasValue)
+                            scorecardValue += action.ScoreImpact.Value;
+                        
+                        if (!string.IsNullOrEmpty(action.ReasonCode))
+                            reasonCodes.Add(action.ReasonCode);
+                        if (!string.IsNullOrEmpty(action.ReasonMessage))
+                            reasonMessages.Add(action.ReasonMessage);
+                        
+                        if (action.IsHardStop)
+                        {
+                            stpDecision = "FAIL";
+                            caseType = -1;
+                            reasonFlag = 1;
+                            break;
+                        }
+                    }
+                }
                 
-                if (!string.IsNullOrEmpty(action.ReasonCode))
-                    reasonCodes.Add(action.ReasonCode);
-                if (!string.IsNullOrEmpty(action.ReasonMessage))
-                    reasonMessages.Add(action.ReasonMessage);
+                unassignedStageStopwatch.Stop();
+                
+                stageTrace.Add(new StageExecutionTrace
+                {
+                    StageId = "unassigned",
+                    StageName = "Unassigned Rules",
+                    ExecutionOrder = 999,
+                    Status = unassignedHasFail ? "failed" : "passed",
+                    RulesExecuted = unassignedRuleTrace,
+                    TriggeredRulesCount = unassignedTriggeredCount,
+                    ExecutionTimeMs = Math.Round(unassignedStageStopwatch.Elapsed.TotalMilliseconds, 2)
+                });
             }
         }
         
@@ -675,6 +771,7 @@ public class ApiController : ControllerBase
             ReasonCodes = reasonCodes.Distinct().ToList(),
             ReasonMessages = reasonMessages.Distinct().ToList(),
             RuleTrace = ruleTrace,
+            StageTrace = stageTrace,
             EvaluationTimeMs = Math.Round(stopwatch.Elapsed.TotalMilliseconds, 2),
             EvaluatedAt = DateTime.UtcNow.ToString("o")
         };
