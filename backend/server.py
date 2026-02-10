@@ -1411,16 +1411,43 @@ def seed_sample_data(db: Session = Depends(get_db)):
     db.add(stage4)
     db.flush()  # Get IDs assigned
     
-    # Sample Products
+    # Sample Products with hierarchy
+    # Parent: Term Life
+    term_parent = ProductModel(
+        code="TERM001",
+        name="Term Life",
+        product_type="term_life",
+        description="Term life insurance category",
+        min_age=18, max_age=65,
+        min_sum_assured=500000, max_sum_assured=50000000,
+        min_premium=5000, is_enabled=True
+    )
+    db.add(term_parent)
+    db.flush()
+    
     products = [
+        # Sub-products under Term Life
         ProductModel(
-            code="TERM001",
-            name="Term Life Protect",
-            product_type="term_life",
-            description="Pure term life insurance with death benefit",
+            code="TERM_PURE",
+            name="Pure Term",
+            product_type="term_pure",
+            description="Pure term life insurance - death benefit only, no maturity payout",
+            parent_product_id=term_parent.id,
             min_age=18, max_age=65,
             min_sum_assured=500000, max_sum_assured=50000000,
-            min_premium=5000, is_enabled=True
+            min_premium=3000, is_enabled=True,
+            has_maturity_benefit=False
+        ),
+        ProductModel(
+            code="TERM_RETURNS",
+            name="Term with Returns",
+            product_type="term_returns",
+            description="Term life with maturity benefit - returns premium if survival",
+            parent_product_id=term_parent.id,
+            min_age=18, max_age=60,
+            min_sum_assured=500000, max_sum_assured=25000000,
+            min_premium=8000, is_enabled=True,
+            has_maturity_benefit=True
         ),
         ProductModel(
             code="ENDOW001",
@@ -1429,7 +1456,8 @@ def seed_sample_data(db: Session = Depends(get_db)):
             description="Endowment plan with maturity benefit",
             min_age=18, max_age=55,
             min_sum_assured=100000, max_sum_assured=10000000,
-            min_premium=10000, is_enabled=True
+            min_premium=10000, is_enabled=True,
+            has_maturity_benefit=True
         ),
         ProductModel(
             code="ULIP001",
@@ -1438,7 +1466,8 @@ def seed_sample_data(db: Session = Depends(get_db)):
             description="Unit linked insurance plan with market-linked returns",
             min_age=18, max_age=60,
             min_sum_assured=250000, max_sum_assured=25000000,
-            min_premium=25000, is_enabled=True
+            min_premium=25000, is_enabled=True,
+            has_maturity_benefit=True
         )
     ]
     for p in products:
