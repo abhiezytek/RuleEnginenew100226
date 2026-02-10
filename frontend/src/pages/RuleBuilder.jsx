@@ -16,7 +16,7 @@ import {
   SelectValue 
 } from '../components/ui/select';
 import { PageLoader } from '../components/shared/LoadingSpinner';
-import { createRule, getRule, updateRule } from '../lib/api';
+import { createRule, getRule, updateRule, getStages } from '../lib/api';
 import { 
   RULE_CATEGORIES, 
   OPERATORS, 
