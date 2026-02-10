@@ -7,6 +7,7 @@ import { Layout } from "./components/layout/Layout";
 import Dashboard from "./pages/Dashboard";
 import RulesList from "./pages/RulesList";
 import RuleBuilder from "./pages/RuleBuilder";
+import Stages from "./pages/Stages";
 import Scorecards from "./pages/Scorecards";
 import Grids from "./pages/Grids";
 import EvaluationConsole from "./pages/EvaluationConsole";
@@ -24,6 +25,7 @@ function App() {
             <Route path="/rules/new" element={<RuleBuilder />} />
             <Route path="/rules/:id" element={<RuleBuilder />} />
             <Route path="/rules/:id/edit" element={<RuleBuilder />} />
+            <Route path="/stages" element={<Stages />} />
             <Route path="/scorecards" element={<Scorecards />} />
             <Route path="/grids" element={<Grids />} />
             <Route path="/evaluate" element={<EvaluationConsole />} />
