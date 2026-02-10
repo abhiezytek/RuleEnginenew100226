@@ -374,6 +374,118 @@ public class ApiController : ControllerBase
         return Ok(new { message = "Product deleted successfully" });
     }
     
+    // Rule Stages CRUD
+    [HttpGet("stages")]
+    public async Task<IActionResult> GetStages()
+    {
+        var stages = await _context.RuleStages.OrderBy(s => s.ExecutionOrder).ToListAsync();
+        var result = new List<object>();
+        
+        foreach (var stage in stages)
+        {
+            var ruleCount = await _context.Rules.CountAsync(r => r.StageId == stage.Id);
+            result.Add(ToStageResponse(stage, ruleCount));
+        }
+        
+        return Ok(result);
+    }
+    
+    [HttpGet("stages/{id}")]
+    public async Task<IActionResult> GetStage(string id)
+    {
+        var stage = await _context.RuleStages.FindAsync(id);
+        if (stage == null) return NotFound(new { detail = "Stage not found" });
+        
+        var ruleCount = await _context.Rules.CountAsync(r => r.StageId == id);
+        return Ok(ToStageResponse(stage, ruleCount));
+    }
+    
+    [HttpPost("stages")]
+    public async Task<IActionResult> CreateStage([FromBody] RuleStageCreateDto dto)
+    {
+        var stage = new RuleStage
+        {
+            Name = dto.Name,
+            Description = dto.Description,
+            ExecutionOrder = dto.ExecutionOrder,
+            StopOnFail = dto.StopOnFail,
+            Color = dto.Color,
+            IsEnabled = dto.IsEnabled
+        };
+        
+        _context.RuleStages.Add(stage);
+        await _context.SaveChangesAsync();
+        await LogAudit("CREATE", "stage", stage.Id, stage.Name);
+        
+        return Ok(ToStageResponse(stage, 0));
+    }
+    
+    [HttpPut("stages/{id}")]
+    public async Task<IActionResult> UpdateStage(string id, [FromBody] RuleStageCreateDto dto)
+    {
+        var stage = await _context.RuleStages.FindAsync(id);
+        if (stage == null) return NotFound(new { detail = "Stage not found" });
+        
+        stage.Name = dto.Name;
+        stage.Description = dto.Description;
+        stage.ExecutionOrder = dto.ExecutionOrder;
+        stage.StopOnFail = dto.StopOnFail;
+        stage.Color = dto.Color;
+        stage.IsEnabled = dto.IsEnabled;
+        stage.UpdatedAt = DateTime.UtcNow.ToString("o");
+        
+        await _context.SaveChangesAsync();
+        await LogAudit("UPDATE", "stage", stage.Id, stage.Name);
+        
+        var ruleCount = await _context.Rules.CountAsync(r => r.StageId == id);
+        return Ok(ToStageResponse(stage, ruleCount));
+    }
+    
+    [HttpDelete("stages/{id}")]
+    public async Task<IActionResult> DeleteStage(string id)
+    {
+        var stage = await _context.RuleStages.FindAsync(id);
+        if (stage == null) return NotFound(new { detail = "Stage not found" });
+        
+        // Remove stage assignment from rules
+        var rules = await _context.Rules.Where(r => r.StageId == id).ToListAsync();
+        foreach (var rule in rules)
+        {
+            rule.StageId = null;
+        }
+        
+        _context.RuleStages.Remove(stage);
+        await _context.SaveChangesAsync();
+        await LogAudit("DELETE", "stage", id, stage.Name);
+        
+        return Ok(new { message = "Stage deleted successfully", rules_unassigned = rules.Count });
+    }
+    
+    [HttpPatch("stages/{id}/toggle")]
+    public async Task<IActionResult> ToggleStage(string id)
+    {
+        var stage = await _context.RuleStages.FindAsync(id);
+        if (stage == null) return NotFound(new { detail = "Stage not found" });
+        
+        stage.IsEnabled = !stage.IsEnabled;
+        stage.UpdatedAt = DateTime.UtcNow.ToString("o");
+        await _context.SaveChangesAsync();
+        await LogAudit("TOGGLE", "stage", stage.Id, stage.Name);
+        
+        return Ok(new { id, is_enabled = stage.IsEnabled });
+    }
+    
+    // Get rules by stage
+    [HttpGet("stages/{id}/rules")]
+    public async Task<IActionResult> GetRulesByStage(string id)
+    {
+        var stage = await _context.RuleStages.FindAsync(id);
+        if (stage == null) return NotFound(new { detail = "Stage not found" });
+        
+        var rules = await _context.Rules.Where(r => r.StageId == id).OrderBy(r => r.Priority).ToListAsync();
+        return Ok(rules.Select(ToRuleResponse));
+    }
+    
     // Underwriting Evaluation
     [HttpPost("underwriting/evaluate")]
     public async Task<IActionResult> EvaluateProposal([FromBody] ProposalData proposal)
