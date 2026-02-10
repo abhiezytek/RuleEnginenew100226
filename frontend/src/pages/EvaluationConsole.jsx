@@ -306,7 +306,12 @@ const EvaluationConsole = () => {
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={proposal.is_smoker}
-                        onCheckedChange={(checked) => setProposal({ ...proposal, is_smoker: checked })}
+                        onCheckedChange={(checked) => setProposal({ 
+                          ...proposal, 
+                          is_smoker: checked,
+                          cigarettes_per_day: checked ? 10 : null,
+                          smoking_years: checked ? 5 : null
+                        })}
                         data-testid="is-smoker-switch"
                       />
                       <Label>Smoker</Label>
@@ -314,12 +319,119 @@ const EvaluationConsole = () => {
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={proposal.has_medical_history}
-                        onCheckedChange={(checked) => setProposal({ ...proposal, has_medical_history: checked })}
+                        onCheckedChange={(checked) => setProposal({ 
+                          ...proposal, 
+                          has_medical_history: checked,
+                          ailment_type: checked ? 'diabetes' : null,
+                          ailment_duration_years: checked ? 2 : null,
+                          is_ailment_ongoing: checked ? true : false
+                        })}
                         data-testid="has-medical-history-switch"
                       />
                       <Label>Medical History</Label>
                     </div>
                   </div>
+
+                  {/* Conditional: Smoker Details */}
+                  {proposal.is_smoker && (
+                    <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg animate-in slide-in-from-top-2 duration-200">
+                      <h5 className="text-sm font-semibold text-amber-800 mb-3 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4" />
+                        Smoking Details (Required)
+                      </h5>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Cigarettes per Day</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={proposal.cigarettes_per_day || ''}
+                            onChange={(e) => setProposal({ ...proposal, cigarettes_per_day: parseInt(e.target.value) || null })}
+                            className="mt-1.5 bg-white"
+                            placeholder="e.g., 10"
+                            data-testid="cigarettes-input"
+                          />
+                        </div>
+                        <div>
+                          <Label>Years of Smoking</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={proposal.smoking_years || ''}
+                            onChange={(e) => setProposal({ ...proposal, smoking_years: parseInt(e.target.value) || null })}
+                            className="mt-1.5 bg-white"
+                            placeholder="e.g., 5"
+                            data-testid="smoking-years-input"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Conditional: Medical History Details */}
+                  {proposal.has_medical_history && (
+                    <div className="mt-4 p-4 bg-rose-50 border border-rose-200 rounded-lg animate-in slide-in-from-top-2 duration-200">
+                      <h5 className="text-sm font-semibold text-rose-800 mb-3 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4" />
+                        Medical History Details (Required)
+                      </h5>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label>Ailment Type</Label>
+                          <Select 
+                            value={proposal.ailment_type || ''} 
+                            onValueChange={(v) => setProposal({ ...proposal, ailment_type: v })}
+                          >
+                            <SelectTrigger className="mt-1.5 bg-white" data-testid="ailment-type-select">
+                              <SelectValue placeholder="Select ailment" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="diabetes">Diabetes</SelectItem>
+                              <SelectItem value="hypertension">Hypertension</SelectItem>
+                              <SelectItem value="heart_disease">Heart Disease</SelectItem>
+                              <SelectItem value="cancer">Cancer</SelectItem>
+                              <SelectItem value="kidney_failure">Kidney Failure</SelectItem>
+                              <SelectItem value="asthma">Asthma</SelectItem>
+                              <SelectItem value="thyroid">Thyroid</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>Duration (Years)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={proposal.ailment_duration_years || ''}
+                            onChange={(e) => setProposal({ ...proposal, ailment_duration_years: parseInt(e.target.value) || null })}
+                            className="mt-1.5 bg-white"
+                            placeholder="Years since diagnosis"
+                            data-testid="ailment-duration-input"
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2">
+                        <Switch
+                          checked={proposal.is_ailment_ongoing}
+                          onCheckedChange={(checked) => setProposal({ ...proposal, is_ailment_ongoing: checked })}
+                          data-testid="is-ailment-ongoing-switch"
+                        />
+                        <Label>Is the condition ongoing/current?</Label>
+                      </div>
+                      {proposal.ailment_type === 'other' && (
+                        <div className="mt-3">
+                          <Label>Ailment Details</Label>
+                          <Input
+                            value={proposal.ailment_details || ''}
+                            onChange={(e) => setProposal({ ...proposal, ailment_details: e.target.value })}
+                            className="mt-1.5 bg-white"
+                            placeholder="Please specify the ailment"
+                            data-testid="ailment-details-input"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Submit */}
