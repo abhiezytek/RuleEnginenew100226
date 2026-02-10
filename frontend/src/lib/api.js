@@ -27,12 +27,9 @@ const convertKeys = (obj, converter) => {
   return obj;
 };
 
-// Request interceptor - convert to camelCase for .NET
+// Request interceptor - log requests
 api.interceptors.request.use(
   (config) => {
-    if (config.data) {
-      config.data = convertKeys(config.data, toCamelCase);
-    }
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
