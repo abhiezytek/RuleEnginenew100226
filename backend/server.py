@@ -674,6 +674,91 @@ def toggle_rule(rule_id: str, db: Session = Depends(get_db)):
     log_audit(db, "TOGGLE", "rule", rule_id, rule.name, {"is_enabled": rule.is_enabled})
     return {"id": rule_id, "is_enabled": rule.is_enabled}
 
+# ==================== RULE STAGES CRUD ====================
+@api_router.post("/stages", response_model=RuleStageResponse)
+def create_stage(stage_data: RuleStageCreate, db: Session = Depends(get_db)):
+    stage = RuleStageModel(
+        name=stage_data.name,
+        description=stage_data.description,
+        execution_order=stage_data.execution_order,
+        stop_on_fail=stage_data.stop_on_fail,
+        color=stage_data.color,
+        is_enabled=stage_data.is_enabled
+    )
+    db.add(stage)
+    db.commit()
+    db.refresh(stage)
+    log_audit(db, "CREATE", "stage", stage.id, stage.name)
+    return stage_to_response(db, stage)
+
+@api_router.get("/stages", response_model=List[RuleStageResponse])
+def get_stages(db: Session = Depends(get_db)):
+    stages = db.query(RuleStageModel).order_by(RuleStageModel.execution_order).all()
+    return [stage_to_response(db, s) for s in stages]
+
+@api_router.get("/stages/{stage_id}", response_model=RuleStageResponse)
+def get_stage(stage_id: str, db: Session = Depends(get_db)):
+    stage = db.query(RuleStageModel).filter(RuleStageModel.id == stage_id).first()
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage not found")
+    return stage_to_response(db, stage)
+
+@api_router.put("/stages/{stage_id}", response_model=RuleStageResponse)
+def update_stage(stage_id: str, stage_data: RuleStageUpdate, db: Session = Depends(get_db)):
+    stage = db.query(RuleStageModel).filter(RuleStageModel.id == stage_id).first()
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage not found")
+    
+    update_data = stage_data.model_dump(exclude_unset=True)
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    for key, value in update_data.items():
+        if value is not None:
+            setattr(stage, key, value)
+    
+    db.commit()
+    db.refresh(stage)
+    log_audit(db, "UPDATE", "stage", stage_id, stage.name, update_data)
+    return stage_to_response(db, stage)
+
+@api_router.delete("/stages/{stage_id}")
+def delete_stage(stage_id: str, db: Session = Depends(get_db)):
+    stage = db.query(RuleStageModel).filter(RuleStageModel.id == stage_id).first()
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage not found")
+    
+    # Remove stage assignment from rules
+    rules = db.query(RuleModel).filter(RuleModel.stage_id == stage_id).all()
+    for rule in rules:
+        rule.stage_id = None
+    
+    name = stage.name
+    db.delete(stage)
+    db.commit()
+    log_audit(db, "DELETE", "stage", stage_id, name)
+    return {"message": "Stage deleted successfully", "rules_unassigned": len(rules)}
+
+@api_router.patch("/stages/{stage_id}/toggle")
+def toggle_stage(stage_id: str, db: Session = Depends(get_db)):
+    stage = db.query(RuleStageModel).filter(RuleStageModel.id == stage_id).first()
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage not found")
+    
+    stage.is_enabled = not stage.is_enabled
+    stage.updated_at = datetime.now(timezone.utc).isoformat()
+    db.commit()
+    log_audit(db, "TOGGLE", "stage", stage_id, stage.name, {"is_enabled": stage.is_enabled})
+    return {"id": stage_id, "is_enabled": stage.is_enabled}
+
+@api_router.get("/stages/{stage_id}/rules", response_model=List[RuleResponse])
+def get_rules_by_stage(stage_id: str, db: Session = Depends(get_db)):
+    stage = db.query(RuleStageModel).filter(RuleStageModel.id == stage_id).first()
+    if not stage:
+        raise HTTPException(status_code=404, detail="Stage not found")
+    
+    rules = db.query(RuleModel).filter(RuleModel.stage_id == stage_id).order_by(RuleModel.priority).all()
+    return [rule_to_response(db, r) for r in rules]
+
 # ==================== SCORECARD CRUD ====================
 @api_router.post("/scorecards")
 def create_scorecard(scorecard_data: ScorecardCreate, db: Session = Depends(get_db)):
