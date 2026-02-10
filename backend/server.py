@@ -238,6 +238,7 @@ class RuleCreate(BaseModel):
     name: str
     description: Optional[str] = None
     category: RuleCategoryEnum
+    stage_id: Optional[str] = None
     condition_group: ConditionGroup
     action: RuleAction
     priority: int = 100
@@ -252,6 +253,8 @@ class RuleResponse(BaseModel):
     name: str
     description: Optional[str] = None
     category: str
+    stage_id: Optional[str] = None
+    stage_name: Optional[str] = None
     condition_group: Dict[str, Any]
     action: Dict[str, Any]
     priority: int
@@ -268,6 +271,7 @@ class RuleUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     category: Optional[RuleCategoryEnum] = None
+    stage_id: Optional[str] = None
     condition_group: Optional[ConditionGroup] = None
     action: Optional[RuleAction] = None
     priority: Optional[int] = None
@@ -276,6 +280,44 @@ class RuleUpdate(BaseModel):
     effective_to: Optional[str] = None
     products: Optional[List[ProductTypeEnum]] = None
     case_types: Optional[List[CaseTypeEnum]] = None
+
+# Rule Stage Models
+class RuleStageCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    execution_order: int = 1
+    stop_on_fail: bool = False
+    color: str = "slate"
+    is_enabled: bool = True
+
+class RuleStageResponse(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    execution_order: int
+    stop_on_fail: bool
+    color: str
+    is_enabled: bool
+    rule_count: int = 0
+    created_at: str
+    updated_at: str
+
+class RuleStageUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    execution_order: Optional[int] = None
+    stop_on_fail: Optional[bool] = None
+    color: Optional[str] = None
+    is_enabled: Optional[bool] = None
+
+class StageExecutionTrace(BaseModel):
+    stage_id: str
+    stage_name: str
+    execution_order: int
+    status: str  # passed, failed, skipped
+    rules_executed: List['RuleExecutionTrace'] = []
+    triggered_rules_count: int
+    execution_time_ms: float
 
 class ScorecardParameter(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
