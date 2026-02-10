@@ -85,6 +85,8 @@ class ReasonFlagEnum(int, Enum):
 
 class ProductTypeEnum(str, Enum):
     TERM_LIFE = "term_life"
+    TERM_PURE = "term_pure"  # Pure Term - death benefit only
+    TERM_RETURNS = "term_returns"  # Term with Returns - death + maturity benefit
     ENDOWMENT = "endowment"
     ULIP = "ulip"
 
