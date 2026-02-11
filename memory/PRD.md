@@ -1,97 +1,63 @@
 # Life Insurance STP & Underwriting Rule Engine
 
-## Original Problem Statement
-Design and build a Life Insurance Straight Through Processing (STP) and Underwriting Rule Engine that is fully configurable, explainable, and auditable.
+## Technology Stack - CURRENT STATUS
 
-## Technology Stack
-- **Frontend**: React 19, Tailwind CSS, Shadcn/UI
-- **Backend**: FastAPI (Python)
-- **Database**: SQLite (temporary; user's original choice was MySQL)
+| Technology | Current | Target | Status |
+|------------|---------|--------|--------|
+| **Node.js** | v20.20.0 | v24 | Container limitation |
+| **React** | 19.2.0 | 19.2 | ✅ Updated |
+| **.NET Core** | Requires reinstall | 9.0 | Code ready, SDK needed |
+| **Backend** | Python FastAPI | .NET 9 | .NET code prepared |
 
-## Core Features Implemented
+## Important Notes
+- **React upgraded to 19.2.0** ✅
+- **.NET 9 backend code is ready** at `/app/dotnet-backend/InsuranceSTP/`
+- The .NET SDK needs to be installed on deployment server
+- Currently running Python/FastAPI backend for testing
 
-### 1. Rule Engine Core
-- [x] STP Pass/Fail decisions
-- [x] Case Type classification (Normal, Direct Accept, Direct Fail, GCRP)
-- [x] Scorecard-based underwriting
-- [x] Grid-based rules
-- [x] Priority-based rule execution
-- [x] Full audit trail
+## .NET 9 Backend Location
+```
+/app/dotnet-backend/InsuranceSTP/
+├── InsuranceSTP.csproj (net9.0)
+├── Controllers/ApiController.cs
+├── Models/Models.cs (includes RiskBands, Stages, Dependent fields)
+├── Data/AppDbContext.cs
+├── Services/RuleEngine.cs
+└── Program.cs
+```
 
-### 2. Rule Groups/Stages
-- [x] Sequential execution stages
-- [x] Stage CRUD operations
-- [x] "Stop on Fail" option per stage
-- [x] Stage-based evaluation trace
+## To Deploy .NET 9 Backend
+```bash
+# Install .NET 9 SDK
+curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel 9.0
 
-### 3. Dependent/Conditional Rules
-- [x] Dynamic form fields based on parent answers
-- [x] Smoker details (cigarettes/day, years)
-- [x] Medical history details (ailment type, duration, ongoing)
-- [x] Rules that evaluate conditional field values
+# Build and run
+cd /app/dotnet-backend/InsuranceSTP
+dotnet restore
+dotnet publish -c Release -o ../publish
+cd ../publish
+dotnet InsuranceSTP.dll --urls "http://0.0.0.0:8001"
+```
 
-### 4. Sub-Products
-- [x] Product hierarchy (Term Life → Pure Term, Term with Returns)
-- [x] Product-specific rules
-- [x] Product variant validation
+## Features Implemented
+- [x] Rule Groups/Stages (4 stages)
+- [x] Dependent/Conditional Rules (19 rules)
+- [x] Sub-Products (Pure Term, Term with Returns)
+- [x] Risk Bands & Premium Loading (17 bands)
+- [x] Dynamic Evaluation Form
+- [x] Risk Bands Management UI
 
-### 5. Risk Bands & Premium Loading (NEW)
-- [x] **17 Risk Bands** across 5 categories:
-  - **Age**: Young Adult (-5%), Prime Age (0%), Middle Age (+15%), Senior (+35%), Elder (+75%)
-  - **Smoking**: Base Loading (+25%), Heavy Smoker (+30%), Long-term (+20%)
-  - **Medical**: Diabetes (+40%), Hypertension (+30%), Thyroid (+15%), Asthma (+20%)
-  - **BMI**: Underweight (+10%), Overweight (+10%), Obese (+25%)
-  - **Occupation**: High Risk (+50%), Medium Risk (+20%)
-- [x] Auto-calculated premium adjustments
-- [x] Risk score accumulation
-- [x] Visual display of applied bands in evaluation
-- [x] Risk Bands management UI
-
-## Sample Premium Calculation
-For a 45-year-old smoker with diabetes and BMI 28:
-- Base Premium: ₹25,000
-- Applied Bands:
-  - Middle Age (41-50): +15%
-  - Smoker Base Loading: +25%
-  - Long-term Smoker: +20%
-  - Diabetes: +40%
-  - Overweight BMI: +10%
-- **Total Loading: +110%**
-- **Loaded Premium: ₹52,500**
-
-## API Endpoints
+## API Endpoints (Both Python & .NET)
 - `/api/rules` - Rules CRUD
-- `/api/stages` - Stages CRUD
-- `/api/risk-bands` - Risk Bands CRUD (NEW)
-- `/api/scorecards` - Scorecards CRUD
-- `/api/grids` - Grids CRUD
-- `/api/products` - Products CRUD
-- `/api/underwriting/evaluate` - Main evaluation (returns risk_loading)
-
-## Files Structure
-```
-/app
-├── backend/
-│   └── server.py          # 2300+ lines
-├── frontend/
-│   └── src/
-│       ├── pages/
-│       │   ├── RiskBands.jsx     # NEW
-│       │   ├── Stages.jsx
-│       │   ├── EvaluationConsole.jsx
-│       │   └── ...
-└── memory/
-    └── PRD.md
-```
-
-## Pending/Future Tasks
-- **P1**: Migrate to MySQL
-- **P2**: Rule versioning and rollback
-- **P3**: Premium loading bands for specific products
-- **P4**: Policy document generation
+- `/api/stages` - Stages CRUD  
+- `/api/risk-bands` - Risk Bands CRUD
+- `/api/underwriting/evaluate` - Evaluation with risk loading
+- `/api/seed` - Sample data
 
 ## Session Updates
-- **Feb 2025**: Rule Groups/Stages
-- **Feb 2025**: Dependent/Conditional Rules
-- **Feb 2025**: Sub-Products
-- **Feb 2025**: Risk Bands & Premium Loading
+- Feb 2025: Rule Groups/Stages
+- Feb 2025: Dependent/Conditional Rules
+- Feb 2025: Sub-Products
+- Feb 2025: Risk Bands & Premium Loading
+- Feb 2025: React upgraded to 19.2.0
+- Feb 2025: .NET 9 backend code prepared
