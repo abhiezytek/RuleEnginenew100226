@@ -806,6 +806,378 @@ public class ApiController : ControllerBase
         return Ok(result);
     }
     
+    // Batch Evaluation - JSON Array
+    [HttpPost("underwriting/evaluate-batch")]
+    public async Task<IActionResult> EvaluateBatch([FromBody] List<ProposalData> proposals)
+    {
+        if (proposals == null || proposals.Count == 0)
+            return BadRequest(new { detail = "No proposals provided" });
+        
+        if (proposals.Count > 1000)
+            return BadRequest(new { detail = "Maximum 1000 proposals per batch" });
+        
+        var stopwatch = Stopwatch.StartNew();
+        var results = new List<object>();
+        var passCount = 0;
+        var failCount = 0;
+        
+        foreach (var proposal in proposals)
+        {
+            var result = await EvaluateSingleProposal(proposal);
+            results.Add(result);
+            
+            if (result.StpDecision == "PASS") passCount++;
+            else failCount++;
+        }
+        
+        stopwatch.Stop();
+        
+        return Ok(new
+        {
+            total_proposals = proposals.Count,
+            pass_count = passCount,
+            fail_count = failCount,
+            pass_rate = Math.Round((double)passCount / proposals.Count * 100, 2),
+            total_time_ms = Math.Round(stopwatch.Elapsed.TotalMilliseconds, 2),
+            results = results.Select(r => ToBatchResultResponse((EvaluationResult)r))
+        });
+    }
+    
+    // CSV Upload for Batch Evaluation
+    [HttpPost("underwriting/evaluate-csv")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> EvaluateCsv(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest(new { detail = "No file uploaded" });
+        
+        if (!file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { detail = "Only CSV files are supported" });
+        
+        var proposals = new List<ProposalData>();
+        var errors = new List<string>();
+        var lineNumber = 0;
+        
+        using (var reader = new StreamReader(file.OpenReadStream()))
+        {
+            var headerLine = await reader.ReadLineAsync();
+            if (headerLine == null)
+                return BadRequest(new { detail = "Empty file" });
+            
+            var headers = headerLine.Split(',').Select(h => h.Trim().ToLower()).ToArray();
+            lineNumber++;
+            
+            while (!reader.EndOfStream)
+            {
+                lineNumber++;
+                var line = await reader.ReadLineAsync();
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                
+                try
+                {
+                    var values = ParseCsvLine(line);
+                    var proposal = MapCsvToProposal(headers, values, lineNumber);
+                    proposals.Add(proposal);
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"Line {lineNumber}: {ex.Message}");
+                }
+            }
+        }
+        
+        if (proposals.Count == 0)
+            return BadRequest(new { detail = "No valid proposals found", errors });
+        
+        if (proposals.Count > 1000)
+            return BadRequest(new { detail = "Maximum 1000 proposals per file" });
+        
+        var stopwatch = Stopwatch.StartNew();
+        var results = new List<EvaluationResult>();
+        
+        foreach (var proposal in proposals)
+        {
+            var result = await EvaluateSingleProposal(proposal);
+            results.Add(result);
+        }
+        
+        stopwatch.Stop();
+        
+        var passCount = results.Count(r => r.StpDecision == "PASS");
+        
+        return Ok(new
+        {
+            total_proposals = proposals.Count,
+            pass_count = passCount,
+            fail_count = results.Count - passCount,
+            pass_rate = Math.Round((double)passCount / proposals.Count * 100, 2),
+            total_time_ms = Math.Round(stopwatch.Elapsed.TotalMilliseconds, 2),
+            parse_errors = errors,
+            results = results.Select(ToBatchResultResponse)
+        });
+    }
+    
+    // Download CSV Template
+    [HttpGet("underwriting/csv-template")]
+    public IActionResult GetCsvTemplate()
+    {
+        var template = "proposal_id,product_type,applicant_age,applicant_gender,applicant_income,sum_assured,premium,bmi,occupation_risk,is_smoker,cigarettes_per_day,smoking_years,has_medical_history,ailment_type,ailment_duration_years,is_ailment_ongoing\n";
+        template += "PROP001,term_pure,35,M,1200000,5000000,25000,24.5,low,false,,,false,,,\n";
+        template += "PROP002,term_pure,45,M,800000,3000000,15000,28,low,true,15,10,false,,,\n";
+        template += "PROP003,term_returns,50,F,1500000,7000000,35000,26,medium,false,,,true,diabetes,5,true\n";
+        
+        var bytes = System.Text.Encoding.UTF8.GetBytes(template);
+        return File(bytes, "text/csv", "proposal_template.csv");
+    }
+    
+    private async Task<EvaluationResult> EvaluateSingleProposal(ProposalData proposal)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        
+        var stpDecision = "PASS";
+        var caseType = 0;
+        var reasonFlag = 0;
+        var scorecardValue = 0;
+        var triggeredRules = new List<string>();
+        var validationErrors = new List<string>();
+        var reasonCodes = new List<string>();
+        var reasonMessages = new List<string>();
+        var ruleTrace = new List<RuleExecutionTrace>();
+        var stageTrace = new List<StageExecutionTrace>();
+        
+        var proposalDict = GetProposalDict(proposal);
+        
+        // Get stages and rules
+        var stages = await _context.RuleStages.Where(s => s.IsEnabled).OrderBy(s => s.ExecutionOrder).ToListAsync();
+        var allRules = await _context.Rules.Where(r => r.IsEnabled).ToListAsync();
+        
+        var shouldStopProcessing = false;
+        
+        // Process each stage
+        foreach (var stage in stages)
+        {
+            if (shouldStopProcessing)
+            {
+                stageTrace.Add(new StageExecutionTrace
+                {
+                    StageId = stage.Id,
+                    StageName = stage.Name,
+                    ExecutionOrder = stage.ExecutionOrder,
+                    Status = "skipped",
+                    RulesExecuted = new List<RuleExecutionTrace>(),
+                    TriggeredRulesCount = 0,
+                    ExecutionTimeMs = 0
+                });
+                continue;
+            }
+            
+            var stageStopwatch = Stopwatch.StartNew();
+            var stageRules = allRules.Where(r => r.StageId == stage.Id).OrderBy(r => r.Priority).ToList();
+            var stageRuleTrace = new List<RuleExecutionTrace>();
+            var stageTriggeredCount = 0;
+            var stageHasFail = false;
+            
+            foreach (var rule in stageRules)
+            {
+                if (!_ruleEngine.IsRuleApplicable(rule, proposal.ProductType, caseType))
+                    continue;
+                
+                var conditionJson = JsonDocument.Parse(rule.ConditionGroupJson).RootElement;
+                var triggered = _ruleEngine.EvaluateConditionGroup(conditionJson, proposalDict);
+                
+                var trace = new RuleExecutionTrace
+                {
+                    RuleId = rule.Id,
+                    RuleName = rule.Name,
+                    Category = rule.Category,
+                    Triggered = triggered,
+                    ConditionResult = triggered,
+                    ActionApplied = triggered ? rule.Action : null,
+                    ExecutionTimeMs = 0
+                };
+                
+                stageRuleTrace.Add(trace);
+                ruleTrace.Add(trace);
+                
+                if (triggered)
+                {
+                    stageTriggeredCount++;
+                    var action = rule.Action;
+                    triggeredRules.Add(rule.Name);
+                    
+                    if (rule.Category == "validation" && !string.IsNullOrEmpty(action.ReasonMessage))
+                        validationErrors.Add(action.ReasonMessage);
+                    
+                    if (action.Decision == "FAIL")
+                    {
+                        stpDecision = "FAIL";
+                        reasonFlag = 1;
+                        stageHasFail = true;
+                    }
+                    
+                    if (action.CaseType.HasValue)
+                        caseType = action.CaseType.Value;
+                    
+                    if (action.ScoreImpact.HasValue)
+                        scorecardValue += action.ScoreImpact.Value;
+                    
+                    if (!string.IsNullOrEmpty(action.ReasonCode))
+                        reasonCodes.Add(action.ReasonCode);
+                    if (!string.IsNullOrEmpty(action.ReasonMessage))
+                        reasonMessages.Add(action.ReasonMessage);
+                    
+                    if (action.IsHardStop)
+                    {
+                        stpDecision = "FAIL";
+                        caseType = -1;
+                        reasonFlag = 1;
+                        stageHasFail = true;
+                        shouldStopProcessing = true;
+                        break;
+                    }
+                }
+            }
+            
+            stageStopwatch.Stop();
+            
+            var stageStatus = stageHasFail ? "failed" : "passed";
+            if (stageHasFail && stage.StopOnFail)
+                shouldStopProcessing = true;
+            
+            stageTrace.Add(new StageExecutionTrace
+            {
+                StageId = stage.Id,
+                StageName = stage.Name,
+                ExecutionOrder = stage.ExecutionOrder,
+                Status = stageStatus,
+                RulesExecuted = stageRuleTrace,
+                TriggeredRulesCount = stageTriggeredCount,
+                ExecutionTimeMs = Math.Round(stageStopwatch.Elapsed.TotalMilliseconds, 2)
+            });
+        }
+        
+        // Calculate Risk Loading
+        var riskLoading = CalculateRiskLoading(proposal);
+        
+        stopwatch.Stop();
+        
+        var caseTypeLabel = caseType switch
+        {
+            0 => "Normal Case",
+            1 => "Direct Accept",
+            -1 => "Direct Fail",
+            3 => "GCRP Case",
+            _ => "Unknown"
+        };
+        
+        return new EvaluationResult
+        {
+            ProposalId = proposal.ProposalId,
+            StpDecision = stpDecision,
+            CaseType = caseType,
+            CaseTypeLabel = caseTypeLabel,
+            ReasonFlag = reasonFlag,
+            ScorecardValue = scorecardValue,
+            TriggeredRules = triggeredRules,
+            ValidationErrors = validationErrors,
+            ReasonCodes = reasonCodes.Distinct().ToList(),
+            ReasonMessages = reasonMessages.Distinct().ToList(),
+            RuleTrace = ruleTrace,
+            StageTrace = stageTrace,
+            RiskLoading = riskLoading,
+            EvaluationTimeMs = Math.Round(stopwatch.Elapsed.TotalMilliseconds, 2),
+            EvaluatedAt = DateTime.UtcNow.ToString("o")
+        };
+    }
+    
+    private string[] ParseCsvLine(string line)
+    {
+        var result = new List<string>();
+        var current = "";
+        var inQuotes = false;
+        
+        foreach (var c in line)
+        {
+            if (c == '"')
+            {
+                inQuotes = !inQuotes;
+            }
+            else if (c == ',' && !inQuotes)
+            {
+                result.Add(current.Trim());
+                current = "";
+            }
+            else
+            {
+                current += c;
+            }
+        }
+        result.Add(current.Trim());
+        
+        return result.ToArray();
+    }
+    
+    private ProposalData MapCsvToProposal(string[] headers, string[] values, int lineNumber)
+    {
+        var proposal = new ProposalData();
+        
+        for (int i = 0; i < headers.Length && i < values.Length; i++)
+        {
+            var header = headers[i];
+            var value = values[i];
+            
+            if (string.IsNullOrWhiteSpace(value)) continue;
+            
+            switch (header)
+            {
+                case "proposal_id": proposal.ProposalId = value; break;
+                case "product_code": proposal.ProductCode = value; break;
+                case "product_type": proposal.ProductType = value; break;
+                case "applicant_age": proposal.ApplicantAge = int.Parse(value); break;
+                case "applicant_gender": proposal.ApplicantGender = value; break;
+                case "applicant_income": proposal.ApplicantIncome = double.Parse(value); break;
+                case "sum_assured": proposal.SumAssured = double.Parse(value); break;
+                case "premium": proposal.Premium = double.Parse(value); break;
+                case "bmi": proposal.Bmi = double.Parse(value); break;
+                case "occupation_code": proposal.OccupationCode = value; break;
+                case "occupation_risk": proposal.OccupationRisk = value; break;
+                case "agent_code": proposal.AgentCode = value; break;
+                case "agent_tier": proposal.AgentTier = value; break;
+                case "pincode": proposal.Pincode = value; break;
+                case "is_smoker": proposal.IsSmoker = value.ToLower() == "true" || value == "1"; break;
+                case "cigarettes_per_day": proposal.CigarettesPerDay = int.Parse(value); break;
+                case "smoking_years": proposal.SmokingYears = int.Parse(value); break;
+                case "has_medical_history": proposal.HasMedicalHistory = value.ToLower() == "true" || value == "1"; break;
+                case "ailment_type": proposal.AilmentType = value; break;
+                case "ailment_details": proposal.AilmentDetails = value; break;
+                case "ailment_duration_years": proposal.AilmentDurationYears = int.Parse(value); break;
+                case "is_ailment_ongoing": proposal.IsAilmentOngoing = value.ToLower() == "true" || value == "1"; break;
+                case "existing_coverage": proposal.ExistingCoverage = double.Parse(value); break;
+            }
+        }
+        
+        if (string.IsNullOrEmpty(proposal.ProposalId))
+            proposal.ProposalId = $"PROP-{lineNumber}-{DateTime.UtcNow.Ticks}";
+        
+        return proposal;
+    }
+    
+    private static object ToBatchResultResponse(EvaluationResult r) => new
+    {
+        proposal_id = r.ProposalId,
+        stp_decision = r.StpDecision,
+        case_type = r.CaseType,
+        case_type_label = r.CaseTypeLabel,
+        scorecard_value = r.ScorecardValue,
+        triggered_rules = r.TriggeredRules,
+        reason_messages = r.ReasonMessages,
+        base_premium = r.RiskLoading?.BasePremium,
+        loaded_premium = r.RiskLoading?.LoadedPremium,
+        loading_percentage = r.RiskLoading?.TotalLoadingPercentage,
+        risk_score = r.RiskLoading?.TotalRiskScore,
+        evaluation_time_ms = r.EvaluationTimeMs
+    };
+    
     // Audit Logs
     [HttpGet("audit-logs")]
     public async Task<IActionResult> GetAuditLogs([FromQuery] string? entity_type, [FromQuery] string? action, [FromQuery] int limit = 100)
