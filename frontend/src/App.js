@@ -12,6 +12,7 @@ import Scorecards from "./pages/Scorecards";
 import Grids from "./pages/Grids";
 import RiskBands from "./pages/RiskBands";
 import EvaluationConsole from "./pages/EvaluationConsole";
+import BulkEvaluation from "./pages/BulkEvaluation";
 import AuditLogs from "./pages/AuditLogs";
 import Products from "./pages/Products";
 
@@ -31,6 +32,7 @@ function App() {
             <Route path="/grids" element={<Grids />} />
             <Route path="/risk-bands" element={<RiskBands />} />
             <Route path="/evaluate" element={<EvaluationConsole />} />
+            <Route path="/bulk-evaluate" element={<BulkEvaluation />} />
             <Route path="/audit" element={<AuditLogs />} />
             <Route path="/products" element={<Products />} />
           </Routes>

@@ -13,7 +13,8 @@ import {
   ChevronRight,
   Shield,
   Layers,
-  TrendingUp
+  TrendingUp,
+  Upload
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '../../lib/utils';
@@ -27,6 +28,7 @@ const navigation = [
   { name: 'Scorecards', href: '/scorecards', icon: Calculator },
   { name: 'Grids', href: '/grids', icon: Grid3X3 },
   { name: 'Evaluation', href: '/evaluate', icon: PlayCircle },
+  { name: 'Bulk Evaluation', href: '/bulk-evaluate', icon: Upload },
   { name: 'Audit Logs', href: '/audit', icon: History },
   { name: 'Products', href: '/products', icon: Package },
 ];
