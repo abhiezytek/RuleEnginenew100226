@@ -2410,6 +2410,375 @@ def seed_sample_data(db: Session = Depends(get_db)):
         "risk_bands": len(risk_bands)
     }
 
+# ==================== BULK EVALUATION ====================
+from fastapi import File, UploadFile
+from fastapi.responses import StreamingResponse
+import io
+import csv
+import time as time_module
+
+class BulkProposalResult(BaseModel):
+    proposal_id: str
+    stp_decision: str
+    case_type: int
+    case_type_label: str
+    scorecard_value: int
+    triggered_rules: List[str]
+    reason_messages: List[str]
+    base_premium: Optional[float] = None
+    loaded_premium: Optional[float] = None
+    loading_percentage: Optional[float] = None
+    risk_score: Optional[int] = None
+    evaluation_time_ms: float
+
+class BulkEvaluationResponse(BaseModel):
+    total_proposals: int
+    pass_count: int
+    fail_count: int
+    pass_rate: float
+    total_time_ms: float
+    parse_errors: List[str] = []
+    results: List[BulkProposalResult]
+
+def evaluate_single_proposal_internal(proposal: ProposalData, db: Session) -> Dict:
+    """Internal function to evaluate a single proposal for batch processing"""
+    start_time = time_module.time()
+    
+    stp_decision = "PASS"
+    case_type = CaseTypeEnum.NORMAL.value
+    reason_flag = ReasonFlagEnum.STP_PASS_SKIP.value
+    scorecard_value = 0
+    triggered_rules = []
+    validation_errors = []
+    reason_codes = []
+    reason_messages = []
+    
+    proposal_dict = proposal.model_dump()
+    
+    # Get all stages ordered by execution_order
+    stages = db.query(RuleStageModel).filter(RuleStageModel.is_enabled).order_by(RuleStageModel.execution_order).all()
+    
+    # Get all enabled rules
+    all_rules = db.query(RuleModel).filter(RuleModel.is_enabled).all()
+    
+    should_stop_processing = False
+    
+    # Process each stage in order
+    for stage in stages:
+        if should_stop_processing:
+            continue
+        
+        stage_rules = [r for r in all_rules if r.stage_id == stage.id]
+        stage_rules.sort(key=lambda r: r.priority)
+        
+        stage_has_fail = False
+        
+        for rule in stage_rules:
+            rule_dict = model_to_dict(rule)
+            
+            if not rule_engine.is_rule_applicable(rule_dict, proposal.product_type.value, case_type):
+                continue
+            
+            condition_group = rule.condition_group
+            triggered = rule_engine.evaluate_condition_group(condition_group, proposal_dict)
+            
+            if triggered:
+                action = rule.action or {}
+                triggered_rules.append(rule.name)
+                
+                # Handle validation errors
+                if rule.category == RuleCategoryEnum.VALIDATION.value and action.get('reason_message'):
+                    validation_errors.append(action['reason_message'])
+                
+                # Handle decisions
+                if action.get('decision') == "FAIL":
+                    stp_decision = "FAIL"
+                    reason_flag = ReasonFlagEnum.STP_FAIL_PRINT.value
+                    stage_has_fail = True
+                
+                # Handle case type
+                if action.get('case_type') is not None:
+                    case_type = action['case_type']
+                
+                # Handle score impact
+                if action.get('score_impact') is not None:
+                    scorecard_value += action['score_impact']
+                
+                # Collect reason codes/messages
+                if action.get('reason_code'):
+                    reason_codes.append(action['reason_code'])
+                if action.get('reason_message'):
+                    reason_messages.append(action['reason_message'])
+                
+                # Hard stop handling
+                if action.get('is_hard_stop'):
+                    stp_decision = "FAIL"
+                    case_type = CaseTypeEnum.DIRECT_FAIL.value
+                    reason_flag = ReasonFlagEnum.STP_FAIL_PRINT.value
+                    stage_has_fail = True
+                    should_stop_processing = True
+                    break
+        
+        if stage_has_fail and stage.stop_on_fail:
+            should_stop_processing = True
+    
+    # Process unassigned rules
+    if not should_stop_processing:
+        unassigned_rules = [r for r in all_rules if r.stage_id is None]
+        unassigned_rules.sort(key=lambda r: r.priority)
+        
+        for rule in unassigned_rules:
+            rule_dict = model_to_dict(rule)
+            
+            if not rule_engine.is_rule_applicable(rule_dict, proposal.product_type.value, case_type):
+                continue
+            
+            condition_group = rule.condition_group
+            triggered = rule_engine.evaluate_condition_group(condition_group, proposal_dict)
+            
+            if triggered:
+                action = rule.action or {}
+                triggered_rules.append(rule.name)
+                
+                if rule.category == RuleCategoryEnum.VALIDATION.value and action.get('reason_message'):
+                    validation_errors.append(action['reason_message'])
+                
+                if action.get('decision') == "FAIL":
+                    stp_decision = "FAIL"
+                    reason_flag = ReasonFlagEnum.STP_FAIL_PRINT.value
+                
+                if action.get('case_type') is not None:
+                    case_type = action['case_type']
+                
+                if action.get('score_impact') is not None:
+                    scorecard_value += action['score_impact']
+                
+                if action.get('reason_code'):
+                    reason_codes.append(action['reason_code'])
+                if action.get('reason_message'):
+                    reason_messages.append(action['reason_message'])
+                
+                if action.get('is_hard_stop'):
+                    stp_decision = "FAIL"
+                    case_type = CaseTypeEnum.DIRECT_FAIL.value
+                    break
+    
+    # Calculate Risk Loading
+    risk_loading = calculate_risk_loading(db, proposal)
+    
+    execution_time = (time_module.time() - start_time) * 1000
+    
+    return {
+        "proposal_id": proposal.proposal_id,
+        "stp_decision": stp_decision,
+        "case_type": case_type,
+        "case_type_label": get_case_type_label(case_type),
+        "scorecard_value": scorecard_value,
+        "triggered_rules": triggered_rules,
+        "reason_messages": list(set(reason_messages)),
+        "base_premium": risk_loading.base_premium,
+        "loaded_premium": risk_loading.loaded_premium,
+        "loading_percentage": risk_loading.total_loading_percentage,
+        "risk_score": risk_loading.total_risk_score,
+        "evaluation_time_ms": round(execution_time, 2)
+    }
+
+def parse_csv_line(line: str) -> List[str]:
+    """Parse a CSV line handling quoted fields"""
+    result = []
+    current = ""
+    in_quotes = False
+    
+    for c in line:
+        if c == '"':
+            in_quotes = not in_quotes
+        elif c == ',' and not in_quotes:
+            result.append(current.strip())
+            current = ""
+        else:
+            current += c
+    result.append(current.strip())
+    
+    return result
+
+def map_csv_to_proposal(headers: List[str], values: List[str], line_number: int) -> ProposalData:
+    """Map CSV values to ProposalData"""
+    proposal_dict = {}
+    
+    for i, header in enumerate(headers):
+        if i >= len(values):
+            break
+        value = values[i].strip()
+        if not value:
+            continue
+        
+        header = header.lower().strip()
+        
+        if header == "proposal_id":
+            proposal_dict["proposal_id"] = value
+        elif header == "product_code":
+            proposal_dict["product_code"] = value
+        elif header == "product_type":
+            proposal_dict["product_type"] = value
+        elif header == "applicant_age":
+            proposal_dict["applicant_age"] = int(value)
+        elif header == "applicant_gender":
+            proposal_dict["applicant_gender"] = value
+        elif header == "applicant_income":
+            proposal_dict["applicant_income"] = float(value)
+        elif header == "sum_assured":
+            proposal_dict["sum_assured"] = float(value)
+        elif header == "premium":
+            proposal_dict["premium"] = float(value)
+        elif header == "bmi":
+            proposal_dict["bmi"] = float(value)
+        elif header == "occupation_code":
+            proposal_dict["occupation_code"] = value
+        elif header == "occupation_risk":
+            proposal_dict["occupation_risk"] = value
+        elif header == "agent_code":
+            proposal_dict["agent_code"] = value
+        elif header == "agent_tier":
+            proposal_dict["agent_tier"] = value
+        elif header == "pincode":
+            proposal_dict["pincode"] = value
+        elif header == "is_smoker":
+            proposal_dict["is_smoker"] = value.lower() in ("true", "1", "yes")
+        elif header == "cigarettes_per_day":
+            proposal_dict["cigarettes_per_day"] = int(value)
+        elif header == "smoking_years":
+            proposal_dict["smoking_years"] = int(value)
+        elif header == "has_medical_history":
+            proposal_dict["has_medical_history"] = value.lower() in ("true", "1", "yes")
+        elif header == "ailment_type":
+            proposal_dict["ailment_type"] = value
+        elif header == "ailment_details":
+            proposal_dict["ailment_details"] = value
+        elif header == "ailment_duration_years":
+            proposal_dict["ailment_duration_years"] = int(value)
+        elif header == "is_ailment_ongoing":
+            proposal_dict["is_ailment_ongoing"] = value.lower() in ("true", "1", "yes")
+        elif header == "existing_coverage":
+            proposal_dict["existing_coverage"] = float(value)
+    
+    # Set defaults for required fields
+    if "proposal_id" not in proposal_dict:
+        proposal_dict["proposal_id"] = f"PROP-{line_number}-{int(time_module.time())}"
+    if "product_type" not in proposal_dict:
+        proposal_dict["product_type"] = "term_life"
+    if "applicant_age" not in proposal_dict:
+        proposal_dict["applicant_age"] = 30
+    if "applicant_gender" not in proposal_dict:
+        proposal_dict["applicant_gender"] = "M"
+    if "applicant_income" not in proposal_dict:
+        proposal_dict["applicant_income"] = 500000
+    if "sum_assured" not in proposal_dict:
+        proposal_dict["sum_assured"] = 1000000
+    if "premium" not in proposal_dict:
+        proposal_dict["premium"] = 10000
+    if "product_code" not in proposal_dict:
+        proposal_dict["product_code"] = "TERM001"
+    
+    return ProposalData(**proposal_dict)
+
+@api_router.post("/underwriting/evaluate-csv")
+async def evaluate_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Evaluate multiple proposals from a CSV file"""
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Only CSV files are supported")
+    
+    content = await file.read()
+    lines = content.decode('utf-8').strip().split('\n')
+    
+    if len(lines) < 2:
+        raise HTTPException(status_code=400, detail="CSV file must have at least a header and one data row")
+    
+    headers = parse_csv_line(lines[0])
+    proposals = []
+    parse_errors = []
+    
+    for i, line in enumerate(lines[1:], start=2):
+        if not line.strip():
+            continue
+        try:
+            values = parse_csv_line(line)
+            proposal = map_csv_to_proposal(headers, values, i)
+            proposals.append(proposal)
+        except Exception as e:
+            parse_errors.append(f"Line {i}: {str(e)}")
+    
+    if not proposals:
+        raise HTTPException(status_code=400, detail="No valid proposals found in CSV")
+    
+    if len(proposals) > 1000:
+        raise HTTPException(status_code=400, detail="Maximum 1000 proposals per file")
+    
+    start_time = time_module.time()
+    results = []
+    pass_count = 0
+    
+    for proposal in proposals:
+        result = evaluate_single_proposal_internal(proposal, db)
+        results.append(result)
+        if result["stp_decision"] == "PASS":
+            pass_count += 1
+    
+    total_time = (time_module.time() - start_time) * 1000
+    
+    return {
+        "total_proposals": len(proposals),
+        "pass_count": pass_count,
+        "fail_count": len(proposals) - pass_count,
+        "pass_rate": round((pass_count / len(proposals)) * 100, 2),
+        "total_time_ms": round(total_time, 2),
+        "parse_errors": parse_errors,
+        "results": results
+    }
+
+@api_router.get("/underwriting/csv-template")
+def get_csv_template():
+    """Download a CSV template for bulk evaluation"""
+    template = "proposal_id,product_type,applicant_age,applicant_gender,applicant_income,sum_assured,premium,bmi,occupation_risk,is_smoker,cigarettes_per_day,smoking_years,has_medical_history,ailment_type,ailment_duration_years,is_ailment_ongoing\n"
+    template += "PROP001,term_pure,35,M,1200000,5000000,25000,24.5,low,false,,,false,,,\n"
+    template += "PROP002,term_pure,45,M,800000,3000000,15000,28,low,true,15,10,false,,,\n"
+    template += "PROP003,term_returns,50,F,1500000,7000000,35000,26,medium,false,,,true,diabetes,5,true\n"
+    
+    return StreamingResponse(
+        iter([template]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=proposal_template.csv"}
+    )
+
+@api_router.post("/underwriting/evaluate-batch")
+def evaluate_batch(proposals: List[ProposalData], db: Session = Depends(get_db)):
+    """Evaluate multiple proposals from JSON array"""
+    if not proposals:
+        raise HTTPException(status_code=400, detail="No proposals provided")
+    
+    if len(proposals) > 1000:
+        raise HTTPException(status_code=400, detail="Maximum 1000 proposals per batch")
+    
+    start_time = time_module.time()
+    results = []
+    pass_count = 0
+    
+    for proposal in proposals:
+        result = evaluate_single_proposal_internal(proposal, db)
+        results.append(result)
+        if result["stp_decision"] == "PASS":
+            pass_count += 1
+    
+    total_time = (time_module.time() - start_time) * 1000
+    
+    return {
+        "total_proposals": len(proposals),
+        "pass_count": pass_count,
+        "fail_count": len(proposals) - pass_count,
+        "pass_rate": round((pass_count / len(proposals)) * 100, 2),
+        "total_time_ms": round(total_time, 2),
+        "results": results
+    }
+
 # Include the router
 app.include_router(api_router)
 
