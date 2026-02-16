@@ -17,8 +17,13 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Database
-var dbPath = Path.Combine(Directory.GetCurrentDirectory(), "insurance_stp.db");
+// Database - use the Python backend's database at /app/backend/insurance_stp.db
+var dbPath = "/app/backend/insurance_stp.db";
+// Fallback to current directory if the path doesn't exist (for local development)
+if (!File.Exists(dbPath))
+{
+    dbPath = Path.Combine(Directory.GetCurrentDirectory(), "insurance_stp.db");
+}
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite($"Data Source={dbPath}"));
 
