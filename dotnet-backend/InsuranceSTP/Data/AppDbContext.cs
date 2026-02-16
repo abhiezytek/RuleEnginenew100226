@@ -20,6 +20,16 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
         
+        // Map to snake_case table names (to match Python/SQLAlchemy database)
+        modelBuilder.Entity<Rule>().ToTable("rules");
+        modelBuilder.Entity<RuleStage>().ToTable("rule_stages");
+        modelBuilder.Entity<RiskBand>().ToTable("risk_bands");
+        modelBuilder.Entity<Scorecard>().ToTable("scorecards");
+        modelBuilder.Entity<Grid>().ToTable("grids");
+        modelBuilder.Entity<Product>().ToTable("products");
+        modelBuilder.Entity<Evaluation>().ToTable("evaluations");
+        modelBuilder.Entity<AuditLog>().ToTable("audit_logs");
+        
         modelBuilder.Entity<Rule>()
             .HasIndex(r => r.Category);
         
