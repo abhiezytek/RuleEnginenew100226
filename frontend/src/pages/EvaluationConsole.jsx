@@ -207,7 +207,7 @@ const EvaluationConsole = () => {
                     />
                   </div>
                   <div>
-                    <Label>Product Type</Label>
+                    <Label>Product Type <span className="text-red-500">*</span></Label>
                     <Select 
                       value={proposal.product_type} 
                       onValueChange={(v) => {
@@ -220,7 +220,7 @@ const EvaluationConsole = () => {
                       }}
                     >
                       <SelectTrigger className="mt-1.5" data-testid="product-type-select">
-                        <SelectValue />
+                        <SelectValue placeholder="Select product type" />
                       </SelectTrigger>
                       <SelectContent>
                         {PRODUCT_TYPES.filter(p => !p.isParent).map(p => (
