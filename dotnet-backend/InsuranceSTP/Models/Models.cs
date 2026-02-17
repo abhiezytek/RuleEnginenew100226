@@ -624,15 +624,15 @@ public class RiskBand
     [NotMapped]
     public RiskBandCondition Condition
     {
-        get => JsonSerializer.Deserialize<RiskBandCondition>(ConditionJson) ?? new RiskBandCondition();
-        set => ConditionJson = JsonSerializer.Serialize(value);
+        get => JsonSerializer.Deserialize<RiskBandCondition>(ConditionJson, JsonOptions.SnakeCase) ?? new RiskBandCondition();
+        set => ConditionJson = JsonSerializer.Serialize(value, JsonOptions.SnakeCase);
     }
     
     [NotMapped]
     public List<string> Products
     {
-        get => JsonSerializer.Deserialize<List<string>>(ProductsJson) ?? new List<string>();
-        set => ProductsJson = JsonSerializer.Serialize(value);
+        get => JsonSerializer.Deserialize<List<string>>(ProductsJson, JsonOptions.SnakeCase) ?? new List<string>();
+        set => ProductsJson = JsonSerializer.Serialize(value, JsonOptions.SnakeCase);
     }
 }
 
