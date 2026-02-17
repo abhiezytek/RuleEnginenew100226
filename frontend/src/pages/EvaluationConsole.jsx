@@ -395,24 +395,24 @@ const EvaluationConsole = () => {
                       </h5>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label>Cigarettes per Day</Label>
+                          <Label>Cigarettes per Day <span className="text-red-500">*</span></Label>
                           <Input
                             type="number"
                             min="1"
                             value={proposal.cigarettes_per_day || ''}
-                            onChange={(e) => setProposal({ ...proposal, cigarettes_per_day: parseInt(e.target.value) || null })}
+                            onChange={(e) => setProposal({ ...proposal, cigarettes_per_day: e.target.value })}
                             className="mt-1.5 bg-white"
                             placeholder="e.g., 10"
                             data-testid="cigarettes-input"
                           />
                         </div>
                         <div>
-                          <Label>Years of Smoking</Label>
+                          <Label>Years of Smoking <span className="text-red-500">*</span></Label>
                           <Input
                             type="number"
                             min="1"
                             value={proposal.smoking_years || ''}
-                            onChange={(e) => setProposal({ ...proposal, smoking_years: parseInt(e.target.value) || null })}
+                            onChange={(e) => setProposal({ ...proposal, smoking_years: e.target.value })}
                             className="mt-1.5 bg-white"
                             placeholder="e.g., 5"
                             data-testid="smoking-years-input"
