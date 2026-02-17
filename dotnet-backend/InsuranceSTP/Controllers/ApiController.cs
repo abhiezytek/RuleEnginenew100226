@@ -523,7 +523,14 @@ public class ApiController : ControllerBase
             ["pincode"] = proposal.Pincode,
             ["is_smoker"] = proposal.IsSmoker,
             ["has_medical_history"] = proposal.HasMedicalHistory,
-            ["existing_coverage"] = proposal.ExistingCoverage
+            ["existing_coverage"] = proposal.ExistingCoverage,
+            // Conditional fields for dependent rules - these were missing!
+            ["cigarettes_per_day"] = proposal.CigarettesPerDay,
+            ["smoking_years"] = proposal.SmokingYears,
+            ["ailment_type"] = proposal.AilmentType,
+            ["ailment_details"] = proposal.AilmentDetails,
+            ["ailment_duration_years"] = proposal.AilmentDurationYears,
+            ["is_ailment_ongoing"] = proposal.IsAilmentOngoing
         };
         
         // Get all stages ordered by execution order
