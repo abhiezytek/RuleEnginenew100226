@@ -358,8 +358,8 @@ const EvaluationConsole = () => {
                         onCheckedChange={(checked) => setProposal({ 
                           ...proposal, 
                           is_smoker: checked,
-                          cigarettes_per_day: checked ? 10 : null,
-                          smoking_years: checked ? 5 : null
+                          cigarettes_per_day: checked ? '' : null,
+                          smoking_years: checked ? '' : null
                         })}
                         data-testid="is-smoker-switch"
                       />
@@ -371,9 +371,9 @@ const EvaluationConsole = () => {
                         onCheckedChange={(checked) => setProposal({ 
                           ...proposal, 
                           has_medical_history: checked,
-                          ailment_type: checked ? 'diabetes' : null,
-                          ailment_duration_years: checked ? 2 : null,
-                          is_ailment_ongoing: checked ? true : false
+                          ailment_type: checked ? '' : null,
+                          ailment_duration_years: checked ? '' : null,
+                          is_ailment_ongoing: checked ? false : false
                         })}
                         data-testid="has-medical-history-switch"
                       />
