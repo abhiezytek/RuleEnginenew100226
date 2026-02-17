@@ -93,29 +93,29 @@ public class Rule
     [NotMapped]
     public ConditionGroup ConditionGroup
     {
-        get => JsonSerializer.Deserialize<ConditionGroup>(ConditionGroupJson) ?? new ConditionGroup();
-        set => ConditionGroupJson = JsonSerializer.Serialize(value);
+        get => JsonSerializer.Deserialize<ConditionGroup>(ConditionGroupJson, JsonOptions.SnakeCase) ?? new ConditionGroup();
+        set => ConditionGroupJson = JsonSerializer.Serialize(value, JsonOptions.SnakeCase);
     }
     
     [NotMapped]
     public RuleAction Action
     {
-        get => JsonSerializer.Deserialize<RuleAction>(ActionJson) ?? new RuleAction();
-        set => ActionJson = JsonSerializer.Serialize(value);
+        get => JsonSerializer.Deserialize<RuleAction>(ActionJson, JsonOptions.SnakeCase) ?? new RuleAction();
+        set => ActionJson = JsonSerializer.Serialize(value, JsonOptions.SnakeCase);
     }
     
     [NotMapped]
     public List<string> Products
     {
-        get => JsonSerializer.Deserialize<List<string>>(ProductsJson) ?? new List<string>();
-        set => ProductsJson = JsonSerializer.Serialize(value);
+        get => JsonSerializer.Deserialize<List<string>>(ProductsJson, JsonOptions.SnakeCase) ?? new List<string>();
+        set => ProductsJson = JsonSerializer.Serialize(value, JsonOptions.SnakeCase);
     }
     
     [NotMapped]
     public List<int> CaseTypes
     {
-        get => JsonSerializer.Deserialize<List<int>>(CaseTypesJson) ?? new List<int>();
-        set => CaseTypesJson = JsonSerializer.Serialize(value);
+        get => JsonSerializer.Deserialize<List<int>>(CaseTypesJson, JsonOptions.SnakeCase) ?? new List<int>();
+        set => CaseTypesJson = JsonSerializer.Serialize(value, JsonOptions.SnakeCase);
     }
 }
 
