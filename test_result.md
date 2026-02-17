@@ -187,12 +187,7 @@ metadata:
   run_ui: true
 
 test_plan:
-  current_focus:
-    - "Evaluation Console - Empty Form Initialization"
-    - "Evaluation Console - Form Validation"
-    - "Evaluation Console - User Input Used in Evaluation"
-    - "Evaluation Console - Reset Button"
-    - "Evaluation Console - Smoker/Medical History Toggles"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
