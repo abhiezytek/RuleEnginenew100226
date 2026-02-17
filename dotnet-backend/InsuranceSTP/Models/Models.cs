@@ -152,8 +152,8 @@ public class Scorecard
     [NotMapped]
     public List<ScorecardParameter> Parameters
     {
-        get => JsonSerializer.Deserialize<List<ScorecardParameter>>(ParametersJson) ?? new List<ScorecardParameter>();
-        set => ParametersJson = JsonSerializer.Serialize(value);
+        get => JsonSerializer.Deserialize<List<ScorecardParameter>>(ParametersJson, JsonOptions.SnakeCase) ?? new List<ScorecardParameter>();
+        set => ParametersJson = JsonSerializer.Serialize(value, JsonOptions.SnakeCase);
     }
 }
 
