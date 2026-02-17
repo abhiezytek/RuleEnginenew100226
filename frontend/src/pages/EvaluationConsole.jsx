@@ -431,7 +431,7 @@ const EvaluationConsole = () => {
                       </h5>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label>Ailment Type</Label>
+                          <Label>Ailment Type <span className="text-red-500">*</span></Label>
                           <Select 
                             value={proposal.ailment_type || ''} 
                             onValueChange={(v) => setProposal({ ...proposal, ailment_type: v })}
@@ -452,12 +452,12 @@ const EvaluationConsole = () => {
                           </Select>
                         </div>
                         <div>
-                          <Label>Duration (Years)</Label>
+                          <Label>Duration (Years) <span className="text-red-500">*</span></Label>
                           <Input
                             type="number"
                             min="0"
                             value={proposal.ailment_duration_years || ''}
-                            onChange={(e) => setProposal({ ...proposal, ailment_duration_years: parseInt(e.target.value) || null })}
+                            onChange={(e) => setProposal({ ...proposal, ailment_duration_years: e.target.value })}
                             className="mt-1.5 bg-white"
                             placeholder="Years since diagnosis"
                             data-testid="ailment-duration-input"
