@@ -102,31 +102,7 @@ const EvaluationConsole = () => {
   };
 
   const handleReset = () => {
-    setProposal({
-      proposal_id: `PROP-${Date.now()}`,
-      product_code: 'TERM_PURE',
-      product_type: 'term_pure',
-      applicant_age: 35,
-      applicant_gender: 'M',
-      applicant_income: 1200000,
-      sum_assured: 5000000,
-      premium: 25000,
-      bmi: 24.5,
-      occupation_code: 'IT001',
-      occupation_risk: 'low',
-      agent_code: 'AGT001',
-      agent_tier: 'gold',
-      pincode: '560001',
-      is_smoker: false,
-      has_medical_history: false,
-      existing_coverage: 0,
-      cigarettes_per_day: null,
-      smoking_years: null,
-      ailment_type: null,
-      ailment_details: null,
-      ailment_duration_years: null,
-      is_ailment_ongoing: false
-    });
+    setProposal(getEmptyProposal());
     setResult(null);
   };
 
