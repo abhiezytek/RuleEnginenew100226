@@ -37,24 +37,25 @@ const EvaluationConsole = () => {
   const [products, setProducts] = useState([]);
   const [traceExpanded, setTraceExpanded] = useState({});
 
-  const [proposal, setProposal] = useState({
+  // Initial proposal state with empty/default values - users must fill in actual values
+  const getEmptyProposal = () => ({
     proposal_id: `PROP-${Date.now()}`,
-    product_code: 'TERM_PURE',
-    product_type: 'term_pure',
-    applicant_age: 35,
-    applicant_gender: 'M',
-    applicant_income: 1200000,
-    sum_assured: 5000000,
-    premium: 25000,
-    bmi: 24.5,
-    occupation_code: 'IT001',
-    occupation_risk: 'low',
-    agent_code: 'AGT001',
-    agent_tier: 'gold',
-    pincode: '560001',
+    product_code: '',
+    product_type: '',
+    applicant_age: '',
+    applicant_gender: '',
+    applicant_income: '',
+    sum_assured: '',
+    premium: '',
+    bmi: '',
+    occupation_code: '',
+    occupation_risk: '',
+    agent_code: '',
+    agent_tier: '',
+    pincode: '',
     is_smoker: false,
     has_medical_history: false,
-    existing_coverage: 0,
+    existing_coverage: '',
     // Conditional fields
     cigarettes_per_day: null,
     smoking_years: null,
@@ -63,6 +64,8 @@ const EvaluationConsole = () => {
     ailment_duration_years: null,
     is_ailment_ongoing: false
   });
+
+  const [proposal, setProposal] = useState(getEmptyProposal());
 
   useEffect(() => {
     fetchProducts();
