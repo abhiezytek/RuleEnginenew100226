@@ -199,29 +199,29 @@ public class Grid
     [NotMapped]
     public List<string> RowLabels
     {
-        get => JsonSerializer.Deserialize<List<string>>(RowLabelsJson) ?? new List<string>();
-        set => RowLabelsJson = JsonSerializer.Serialize(value);
+        get => JsonSerializer.Deserialize<List<string>>(RowLabelsJson, JsonOptions.SnakeCase) ?? new List<string>();
+        set => RowLabelsJson = JsonSerializer.Serialize(value, JsonOptions.SnakeCase);
     }
     
     [NotMapped]
     public List<string> ColLabels
     {
-        get => JsonSerializer.Deserialize<List<string>>(ColLabelsJson) ?? new List<string>();
-        set => ColLabelsJson = JsonSerializer.Serialize(value);
+        get => JsonSerializer.Deserialize<List<string>>(ColLabelsJson, JsonOptions.SnakeCase) ?? new List<string>();
+        set => ColLabelsJson = JsonSerializer.Serialize(value, JsonOptions.SnakeCase);
     }
     
     [NotMapped]
     public List<GridCell> Cells
     {
-        get => JsonSerializer.Deserialize<List<GridCell>>(CellsJson) ?? new List<GridCell>();
-        set => CellsJson = JsonSerializer.Serialize(value);
+        get => JsonSerializer.Deserialize<List<GridCell>>(CellsJson, JsonOptions.SnakeCase) ?? new List<GridCell>();
+        set => CellsJson = JsonSerializer.Serialize(value, JsonOptions.SnakeCase);
     }
     
     [NotMapped]
     public List<string> Products
     {
-        get => JsonSerializer.Deserialize<List<string>>(ProductsJson) ?? new List<string>();
-        set => ProductsJson = JsonSerializer.Serialize(value);
+        get => JsonSerializer.Deserialize<List<string>>(ProductsJson, JsonOptions.SnakeCase) ?? new List<string>();
+        set => ProductsJson = JsonSerializer.Serialize(value, JsonOptions.SnakeCase);
     }
 }
 
