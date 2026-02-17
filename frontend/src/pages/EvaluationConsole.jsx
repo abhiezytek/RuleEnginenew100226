@@ -323,13 +323,13 @@ const EvaluationConsole = () => {
                   <h4 className="text-sm font-semibold text-slate-700 mb-3">Risk Factors</h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label>Occupation Risk</Label>
+                      <Label>Occupation Risk <span className="text-red-500">*</span></Label>
                       <Select 
                         value={proposal.occupation_risk} 
                         onValueChange={(v) => setProposal({ ...proposal, occupation_risk: v })}
                       >
                         <SelectTrigger className="mt-1.5" data-testid="occupation-risk-select">
-                          <SelectValue />
+                          <SelectValue placeholder="Select risk level" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="low">Low</SelectItem>
@@ -339,13 +339,13 @@ const EvaluationConsole = () => {
                       </Select>
                     </div>
                     <div>
-                      <Label>Agent Tier</Label>
+                      <Label>Agent Tier <span className="text-red-500">*</span></Label>
                       <Select 
                         value={proposal.agent_tier} 
                         onValueChange={(v) => setProposal({ ...proposal, agent_tier: v })}
                       >
                         <SelectTrigger className="mt-1.5" data-testid="agent-tier-select">
-                          <SelectValue />
+                          <SelectValue placeholder="Select tier" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="standard">Standard</SelectItem>
