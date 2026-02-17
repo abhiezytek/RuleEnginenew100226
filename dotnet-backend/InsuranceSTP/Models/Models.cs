@@ -4,6 +4,16 @@ using System.Text.Json;
 
 namespace InsuranceSTP.Models;
 
+// JSON options for snake_case serialization (to match Python backend and frontend)
+public static class JsonOptions
+{
+    public static readonly JsonSerializerOptions SnakeCase = new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        WriteIndented = false
+    };
+}
+
 // Enums
 public enum RuleCategory
 {
