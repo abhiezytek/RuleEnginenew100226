@@ -80,12 +80,72 @@ const EvaluationConsole = () => {
     }
   };
 
+  // Validate required fields before submission
+  const validateProposal = () => {
+    const errors = [];
+    if (!proposal.product_type) errors.push('Product Type is required');
+    if (!proposal.applicant_age) errors.push('Applicant Age is required');
+    if (!proposal.applicant_gender) errors.push('Gender is required');
+    if (!proposal.applicant_income) errors.push('Annual Income is required');
+    if (!proposal.sum_assured) errors.push('Sum Assured is required');
+    if (!proposal.premium) errors.push('Premium is required');
+    if (!proposal.bmi) errors.push('BMI is required');
+    if (!proposal.occupation_risk) errors.push('Occupation Risk is required');
+    if (!proposal.agent_tier) errors.push('Agent Tier is required');
+    
+    if (proposal.is_smoker) {
+      if (!proposal.cigarettes_per_day) errors.push('Cigarettes per day is required for smokers');
+      if (!proposal.smoking_years) errors.push('Smoking years is required for smokers');
+    }
+    
+    if (proposal.has_medical_history) {
+      if (!proposal.ailment_type) errors.push('Ailment type is required for medical history');
+      if (!proposal.ailment_duration_years) errors.push('Ailment duration is required for medical history');
+    }
+    
+    return errors;
+  };
+
   const handleEvaluate = async () => {
+    // Validate before submission
+    const validationErrors = validateProposal();
+    if (validationErrors.length > 0) {
+      validationErrors.forEach(err => toast.error(err));
+      return;
+    }
+    
     try {
       setEvaluating(true);
       setResult(null);
       
-      const response = await evaluateProposal(proposal);
+      // Build the proposal data with properly typed values from form inputs
+      const proposalData = {
+        proposal_id: proposal.proposal_id,
+        product_code: proposal.product_code || proposal.product_type?.toUpperCase().replace('_', '_'),
+        product_type: proposal.product_type,
+        applicant_age: parseInt(proposal.applicant_age) || 0,
+        applicant_gender: proposal.applicant_gender,
+        applicant_income: parseInt(proposal.applicant_income) || 0,
+        sum_assured: parseInt(proposal.sum_assured) || 0,
+        premium: parseInt(proposal.premium) || 0,
+        bmi: parseFloat(proposal.bmi) || 0,
+        occupation_code: proposal.occupation_code || 'DEFAULT',
+        occupation_risk: proposal.occupation_risk,
+        agent_code: proposal.agent_code || 'DEFAULT',
+        agent_tier: proposal.agent_tier,
+        pincode: proposal.pincode || '000000',
+        is_smoker: proposal.is_smoker,
+        has_medical_history: proposal.has_medical_history,
+        existing_coverage: parseInt(proposal.existing_coverage) || 0,
+        cigarettes_per_day: proposal.is_smoker ? (parseInt(proposal.cigarettes_per_day) || null) : null,
+        smoking_years: proposal.is_smoker ? (parseInt(proposal.smoking_years) || null) : null,
+        ailment_type: proposal.has_medical_history ? proposal.ailment_type : null,
+        ailment_details: proposal.has_medical_history ? proposal.ailment_details : null,
+        ailment_duration_years: proposal.has_medical_history ? (parseInt(proposal.ailment_duration_years) || null) : null,
+        is_ailment_ongoing: proposal.has_medical_history ? proposal.is_ailment_ongoing : false
+      };
+      
+      const response = await evaluateProposal(proposalData);
       setResult(response.data);
       
       if (response.data.stp_decision === 'PASS') {
