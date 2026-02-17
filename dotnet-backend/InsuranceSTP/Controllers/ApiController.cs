@@ -928,10 +928,10 @@ public class ApiController : ControllerBase
     [HttpGet("underwriting/csv-template")]
     public IActionResult GetCsvTemplate()
     {
-        var template = "proposal_id,product_type,applicant_age,applicant_gender,applicant_income,sum_assured,premium,bmi,occupation_risk,is_smoker,cigarettes_per_day,smoking_years,has_medical_history,ailment_type,ailment_duration_years,is_ailment_ongoing\n";
-        template += "PROP001,term_pure,35,M,1200000,5000000,25000,24.5,low,false,,,false,,,\n";
-        template += "PROP002,term_pure,45,M,800000,3000000,15000,28,low,true,15,10,false,,,\n";
-        template += "PROP003,term_returns,50,F,1500000,7000000,35000,26,medium,false,,,true,diabetes,5,true\n";
+        var template = "proposal_id,product_code,product_type,applicant_age,applicant_gender,applicant_income,sum_assured,premium,bmi,occupation_code,occupation_risk,agent_code,agent_tier,pincode,is_smoker,cigarettes_per_day,smoking_years,has_medical_history,ailment_type,ailment_details,ailment_duration_years,is_ailment_ongoing,existing_coverage\n";
+        template += "PROP001,TERM001,term_pure,35,M,1200000,5000000,25000,24.5,OCC001,low,AGT001,gold,110001,false,,,false,,,,0\n";
+        template += "PROP002,TERM001,term_pure,45,M,800000,3000000,15000,28,OCC002,low,AGT002,silver,110002,true,15,10,false,,,,0\n";
+        template += "PROP003,TERM002,term_returns,50,F,1500000,7000000,35000,26,OCC003,medium,AGT003,bronze,110003,false,,,true,diabetes,Type 2,5,true,1000000\n";
         
         var bytes = System.Text.Encoding.UTF8.GetBytes(template);
         return File(bytes, "text/csv", "proposal_template.csv");
