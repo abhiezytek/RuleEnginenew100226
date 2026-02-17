@@ -101,3 +101,87 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Life Insurance STP & Underwriting Rule Engine - Fixed hardcoded values in EvaluationConsole.jsx that were overriding user input and affecting STP evaluation results"
+
+frontend:
+  - task: "Evaluation Console - Empty Form Initialization"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/EvaluationConsole.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Replaced hardcoded default values with empty strings and null values. Form now starts empty with placeholders."
+
+  - task: "Evaluation Console - Form Validation"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/EvaluationConsole.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Added validateProposal() function to check required fields before submission. Shows toast errors for missing fields."
+
+  - task: "Evaluation Console - User Input Used in Evaluation"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/EvaluationConsole.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "handleEvaluate() now properly converts form string values to typed values and sends to backend. User-entered values are correctly used in STP evaluation."
+
+  - task: "Evaluation Console - Reset Button"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/EvaluationConsole.jsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Reset button now clears form to empty state using getEmptyProposal() helper function."
+
+  - task: "Evaluation Console - Smoker/Medical History Toggles"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/EvaluationConsole.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Smoker and Medical History toggles no longer set hardcoded defaults (10 cigarettes, 5 years, diabetes). Users must enter their own values."
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Evaluation Console - Empty Form Initialization"
+    - "Evaluation Console - Form Validation"
+    - "Evaluation Console - User Input Used in Evaluation"
+    - "Evaluation Console - Reset Button"
+    - "Evaluation Console - Smoker/Medical History Toggles"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: "Fixed hardcoded values in EvaluationConsole.jsx. Need to test: 1) Form starts empty with placeholders, 2) Validation shows errors for missing fields, 3) User-entered values are correctly used in STP evaluation (different values should produce different results), 4) Reset button clears form, 5) Smoker/Medical toggles don't set hardcoded defaults."
