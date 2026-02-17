@@ -283,32 +283,35 @@ const EvaluationConsole = () => {
                   <h4 className="text-sm font-semibold text-slate-700 mb-3">Financial Details</h4>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <Label>Annual Income (₹)</Label>
+                      <Label>Annual Income (₹) <span className="text-red-500">*</span></Label>
                       <Input
                         type="number"
                         value={proposal.applicant_income}
-                        onChange={(e) => setProposal({ ...proposal, applicant_income: parseInt(e.target.value) || 0 })}
+                        onChange={(e) => setProposal({ ...proposal, applicant_income: e.target.value })}
                         className="mt-1.5"
+                        placeholder="e.g., 1200000"
                         data-testid="income-input"
                       />
                     </div>
                     <div>
-                      <Label>Sum Assured (₹)</Label>
+                      <Label>Sum Assured (₹) <span className="text-red-500">*</span></Label>
                       <Input
                         type="number"
                         value={proposal.sum_assured}
-                        onChange={(e) => setProposal({ ...proposal, sum_assured: parseInt(e.target.value) || 0 })}
+                        onChange={(e) => setProposal({ ...proposal, sum_assured: e.target.value })}
                         className="mt-1.5"
+                        placeholder="e.g., 5000000"
                         data-testid="sum-assured-input"
                       />
                     </div>
                     <div>
-                      <Label>Premium (₹)</Label>
+                      <Label>Premium (₹) <span className="text-red-500">*</span></Label>
                       <Input
                         type="number"
                         value={proposal.premium}
-                        onChange={(e) => setProposal({ ...proposal, premium: parseInt(e.target.value) || 0 })}
+                        onChange={(e) => setProposal({ ...proposal, premium: e.target.value })}
                         className="mt-1.5"
+                        placeholder="e.g., 25000"
                         data-testid="premium-input"
                       />
                     </div>
