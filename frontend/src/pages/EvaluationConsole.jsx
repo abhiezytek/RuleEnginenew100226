@@ -238,23 +238,24 @@ const EvaluationConsole = () => {
                   <h4 className="text-sm font-semibold text-slate-700 mb-3">Applicant Details</h4>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <Label>Age</Label>
+                      <Label>Age <span className="text-red-500">*</span></Label>
                       <Input
                         type="number"
                         value={proposal.applicant_age}
-                        onChange={(e) => setProposal({ ...proposal, applicant_age: parseInt(e.target.value) || 0 })}
+                        onChange={(e) => setProposal({ ...proposal, applicant_age: e.target.value })}
                         className="mt-1.5"
+                        placeholder="e.g., 35"
                         data-testid="applicant-age-input"
                       />
                     </div>
                     <div>
-                      <Label>Gender</Label>
+                      <Label>Gender <span className="text-red-500">*</span></Label>
                       <Select 
                         value={proposal.applicant_gender} 
                         onValueChange={(v) => setProposal({ ...proposal, applicant_gender: v })}
                       >
                         <SelectTrigger className="mt-1.5" data-testid="gender-select">
-                          <SelectValue />
+                          <SelectValue placeholder="Select gender" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="M">Male</SelectItem>
@@ -263,13 +264,14 @@ const EvaluationConsole = () => {
                       </Select>
                     </div>
                     <div>
-                      <Label>BMI</Label>
+                      <Label>BMI <span className="text-red-500">*</span></Label>
                       <Input
                         type="number"
                         step="0.1"
                         value={proposal.bmi}
-                        onChange={(e) => setProposal({ ...proposal, bmi: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) => setProposal({ ...proposal, bmi: e.target.value })}
                         className="mt-1.5"
+                        placeholder="e.g., 24.5"
                         data-testid="bmi-input"
                       />
                     </div>
