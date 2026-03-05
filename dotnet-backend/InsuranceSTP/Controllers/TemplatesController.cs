@@ -60,7 +60,7 @@ public class TemplatesController : ControllerBase
     
     [HttpPost("{templateId}/create-rule")]
     [Authorize]
-    public IActionResult CreateRuleFromTemplate(string templateId, [FromBody] CreateRuleFromTemplateRequest? request)
+    public IActionResult CreateRuleFromTemplate(string templateId, [FromQuery] string? stage_id = null)
     {
         if (!HasPermission(Permissions.CanCreateRules))
         {
@@ -81,7 +81,7 @@ public class TemplatesController : ControllerBase
             Name = template.Name,
             Description = template.Description,
             Category = template.Category,
-            StageId = request?.StageId,
+            StageId = stage_id,
             ConditionGroupJson = template.ConditionGroupJson,
             ActionJson = template.ActionJson,
             Priority = template.Priority,
