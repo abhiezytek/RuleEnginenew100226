@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Query, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Query, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 import os
@@ -15,6 +16,14 @@ from sqlalchemy import create_engine, Column, String, Integer, Float, Boolean, T
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from contextlib import contextmanager
+
+# Import auth module
+from auth import (
+    UserCreate, UserUpdate, UserLogin, UserResponse, TokenResponse, ChangePassword,
+    UserRole, ROLE_PERMISSIONS, verify_password, get_password_hash, 
+    create_access_token, decode_access_token, check_permission
+)
+from rule_templates import STP_RULE_TEMPLATES, TEMPLATE_CATEGORIES
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -222,9 +231,82 @@ class AuditLogModel(Base):
     performed_by = Column(String(100), default="system")
     performed_at = Column(String(50), default=lambda: datetime.now(timezone.utc).isoformat())
 
+class UserModel(Base):
+    """User model for authentication and authorization"""
+    __tablename__ = "users"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    username = Column(String(100), unique=True, nullable=False)
+    email = Column(String(255), unique=True, nullable=False)
+    hashed_password = Column(String(255), nullable=False)
+    full_name = Column(String(255), nullable=False)
+    role = Column(String(50), default="viewer")  # admin, manager, viewer
+    is_active = Column(Boolean, default=True)
+    created_at = Column(String(50), default=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at = Column(String(50), default=lambda: datetime.now(timezone.utc).isoformat())
+    last_login = Column(String(50), nullable=True)
+
+class RuleTemplateModel(Base):
+    """Rule templates for quick rule creation"""
+    __tablename__ = "rule_templates"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    template_id = Column(String(50), unique=True, nullable=False)  # e.g., STP001
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(String(50), nullable=False)
+    condition_group = Column(JSON, nullable=False)
+    action = Column(JSON, nullable=False)
+    letter_flag = Column(String(10), nullable=True)
+    follow_up_code = Column(String(50), nullable=True)
+    priority = Column(Integer, default=100)
+    products = Column(JSON, default=list)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(String(50), default=lambda: datetime.now(timezone.utc).isoformat())
+
 # Create tables
 def init_db():
     Base.metadata.create_all(bind=engine)
+    
+    # Create default admin user if not exists
+    db = SessionLocal()
+    try:
+        admin = db.query(UserModel).filter(UserModel.username == "admin").first()
+        if not admin:
+            admin_user = UserModel(
+                username="admin",
+                email="admin@ruleengine.com",
+                hashed_password=get_password_hash("admin123"),
+                full_name="System Administrator",
+                role=UserRole.ADMIN,
+                is_active=True
+            )
+            db.add(admin_user)
+            db.commit()
+            logger.info("Default admin user created (username: admin, password: admin123)")
+        
+        # Seed rule templates if not exists
+        existing_templates = db.query(RuleTemplateModel).count()
+        if existing_templates == 0:
+            for template in STP_RULE_TEMPLATES:
+                tpl = RuleTemplateModel(
+                    template_id=template["template_id"],
+                    name=template["name"],
+                    description=template.get("description", ""),
+                    category=template["category"],
+                    condition_group=template["condition_group"],
+                    action=template["action"],
+                    letter_flag=template.get("letter_flag"),
+                    follow_up_code=template.get("follow_up_code"),
+                    priority=template.get("priority", 100),
+                    products=template.get("products", []),
+                    is_active=True
+                )
+                db.add(tpl)
+            db.commit()
+            logger.info(f"Seeded {len(STP_RULE_TEMPLATES)} rule templates")
+    finally:
+        db.close()
 
 # Dependency for DB session
 def get_db():
@@ -619,6 +701,372 @@ def stage_to_response(db: Session, stage: RuleStageModel) -> Dict:
     rule_count = db.query(RuleModel).filter(RuleModel.stage_id == stage.id).count()
     result['rule_count'] = rule_count
     return result
+
+# ==================== AUTHENTICATION ====================
+security = HTTPBearer(auto_error=False)
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+) -> Optional[UserModel]:
+    """Get current user from JWT token (optional - returns None if no token)"""
+    if credentials is None:
+        return None
+    
+    payload = decode_access_token(credentials.credentials)
+    if payload is None:
+        return None
+    
+    username = payload.get("sub")
+    if username is None:
+        return None
+    
+    user = db.query(UserModel).filter(UserModel.username == username).first()
+    if user is None or not user.is_active:
+        return None
+    
+    return user
+
+def require_auth(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+) -> UserModel:
+    """Require authentication - raises exception if not authenticated"""
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    payload = decode_access_token(credentials.credentials)
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    username = payload.get("sub")
+    if username is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload"
+        )
+    
+    user = db.query(UserModel).filter(UserModel.username == username).first()
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found or inactive"
+        )
+    
+    return user
+
+def require_permission(permission: str):
+    """Dependency factory for permission checking"""
+    def check(current_user: UserModel = Depends(require_auth)):
+        if not check_permission(current_user.role, permission):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission denied: {permission} required"
+            )
+        return current_user
+    return check
+
+def user_to_response(user: UserModel) -> Dict:
+    """Convert user model to response dict (excluding password)"""
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "full_name": user.full_name,
+        "role": user.role,
+        "is_active": user.is_active,
+        "created_at": user.created_at,
+        "last_login": user.last_login
+    }
+
+# ==================== AUTH ROUTES ====================
+@api_router.post("/auth/login", response_model=TokenResponse)
+def login(login_data: UserLogin, db: Session = Depends(get_db)):
+    """Authenticate user and return JWT token"""
+    user = db.query(UserModel).filter(UserModel.username == login_data.username).first()
+    
+    if not user or not verify_password(login_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password"
+        )
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User account is disabled"
+        )
+    
+    # Update last login
+    user.last_login = datetime.now(timezone.utc).isoformat()
+    db.commit()
+    
+    # Create token
+    access_token = create_access_token(data={"sub": user.username, "role": user.role})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": user_to_response(user)
+    }
+
+@api_router.get("/auth/me", response_model=UserResponse)
+def get_current_user_info(current_user: UserModel = Depends(require_auth)):
+    """Get current authenticated user info"""
+    return user_to_response(current_user)
+
+@api_router.post("/auth/change-password")
+def change_password(
+    password_data: ChangePassword,
+    current_user: UserModel = Depends(require_auth),
+    db: Session = Depends(get_db)
+):
+    """Change current user's password"""
+    if not verify_password(password_data.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect"
+        )
+    
+    current_user.hashed_password = get_password_hash(password_data.new_password)
+    current_user.updated_at = datetime.now(timezone.utc).isoformat()
+    db.commit()
+    
+    return {"message": "Password changed successfully"}
+
+# ==================== USER MANAGEMENT (Admin only) ====================
+@api_router.get("/users", response_model=List[UserResponse])
+def get_users(
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(require_permission("can_manage_users"))
+):
+    """Get all users (admin only)"""
+    users = db.query(UserModel).all()
+    return [user_to_response(u) for u in users]
+
+@api_router.post("/users", response_model=UserResponse)
+def create_user(
+    user_data: UserCreate,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(require_permission("can_manage_users"))
+):
+    """Create new user (admin only)"""
+    # Check if username or email already exists
+    existing = db.query(UserModel).filter(
+        (UserModel.username == user_data.username) | (UserModel.email == user_data.email)
+    ).first()
+    
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username or email already exists"
+        )
+    
+    # Validate role
+    if user_data.role not in [UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid role. Must be admin, manager, or viewer"
+        )
+    
+    user = UserModel(
+        username=user_data.username,
+        email=user_data.email,
+        hashed_password=get_password_hash(user_data.password),
+        full_name=user_data.full_name,
+        role=user_data.role,
+        is_active=True
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    
+    log_audit(db, "CREATE", "user", user.id, user.username)
+    return user_to_response(user)
+
+@api_router.get("/users/{user_id}", response_model=UserResponse)
+def get_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(require_permission("can_manage_users"))
+):
+    """Get user by ID (admin only)"""
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user_to_response(user)
+
+@api_router.put("/users/{user_id}", response_model=UserResponse)
+def update_user(
+    user_id: str,
+    user_data: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(require_permission("can_manage_users"))
+):
+    """Update user (admin only)"""
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Prevent admin from deactivating themselves
+    if user.id == current_user.id and user_data.is_active == False:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot deactivate your own account"
+        )
+    
+    if user_data.email:
+        existing = db.query(UserModel).filter(
+            UserModel.email == user_data.email, UserModel.id != user_id
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        user.email = user_data.email
+    
+    if user_data.full_name:
+        user.full_name = user_data.full_name
+    
+    if user_data.role:
+        if user_data.role not in [UserRole.ADMIN, UserRole.MANAGER, UserRole.VIEWER]:
+            raise HTTPException(status_code=400, detail="Invalid role")
+        user.role = user_data.role
+    
+    if user_data.is_active is not None:
+        user.is_active = user_data.is_active
+    
+    user.updated_at = datetime.now(timezone.utc).isoformat()
+    db.commit()
+    db.refresh(user)
+    
+    log_audit(db, "UPDATE", "user", user_id, user.username)
+    return user_to_response(user)
+
+@api_router.delete("/users/{user_id}")
+def delete_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(require_permission("can_manage_users"))
+):
+    """Delete user (admin only)"""
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Prevent admin from deleting themselves
+    if user.id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own account"
+        )
+    
+    username = user.username
+    db.delete(user)
+    db.commit()
+    
+    log_audit(db, "DELETE", "user", user_id, username)
+    return {"message": "User deleted successfully"}
+
+@api_router.post("/users/{user_id}/reset-password")
+def reset_user_password(
+    user_id: str,
+    new_password: str = Query(..., min_length=6),
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(require_permission("can_manage_users"))
+):
+    """Reset user password (admin only)"""
+    user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.hashed_password = get_password_hash(new_password)
+    user.updated_at = datetime.now(timezone.utc).isoformat()
+    db.commit()
+    
+    log_audit(db, "PASSWORD_RESET", "user", user_id, user.username)
+    return {"message": "Password reset successfully"}
+
+# ==================== RULE TEMPLATES ====================
+@api_router.get("/templates")
+def get_rule_templates(
+    category: Optional[str] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Get all rule templates"""
+    query = db.query(RuleTemplateModel).filter(RuleTemplateModel.is_active == True)
+    
+    if category:
+        query = query.filter(RuleTemplateModel.category == category)
+    
+    if search:
+        query = query.filter(
+            (RuleTemplateModel.name.ilike(f"%{search}%")) |
+            (RuleTemplateModel.template_id.ilike(f"%{search}%")) |
+            (RuleTemplateModel.description.ilike(f"%{search}%"))
+        )
+    
+    templates = query.order_by(RuleTemplateModel.priority).all()
+    return [model_to_dict(t) for t in templates]
+
+@api_router.get("/templates/{template_id}")
+def get_rule_template(template_id: str, db: Session = Depends(get_db)):
+    """Get a specific rule template"""
+    template = db.query(RuleTemplateModel).filter(
+        (RuleTemplateModel.id == template_id) | (RuleTemplateModel.template_id == template_id)
+    ).first()
+    
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    return model_to_dict(template)
+
+@api_router.post("/templates/{template_id}/create-rule")
+def create_rule_from_template(
+    template_id: str,
+    stage_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(require_permission("can_create_rules"))
+):
+    """Create a new rule from a template"""
+    template = db.query(RuleTemplateModel).filter(
+        (RuleTemplateModel.id == template_id) | (RuleTemplateModel.template_id == template_id)
+    ).first()
+    
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    # Create rule from template
+    rule = RuleModel(
+        name=template.name,
+        description=template.description,
+        category=template.category,
+        stage_id=stage_id,
+        condition_group=template.condition_group,
+        action=template.action,
+        priority=template.priority,
+        is_enabled=True,
+        products=template.products
+    )
+    
+    db.add(rule)
+    db.commit()
+    db.refresh(rule)
+    
+    log_audit(db, "CREATE_FROM_TEMPLATE", "rule", rule.id, rule.name, {"template_id": template.template_id})
+    return rule_to_response(db, rule)
+
+@api_router.get("/templates/categories/list")
+def get_template_categories():
+    """Get template categories"""
+    return TEMPLATE_CATEGORIES
 
 # ==================== API ROUTES ====================
 

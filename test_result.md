@@ -102,98 +102,180 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Life Insurance STP & Underwriting Rule Engine - Fixed hardcoded values in EvaluationConsole.jsx that were overriding user input and affecting STP evaluation results"
+user_problem_statement: "Rule Engine enhancements: 1) Setup STP rule templates from specification document, 2) Add nested condition support (e.g., (Cond1 OR Cond2) AND (Cond3 OR Cond4)), 3) Create login page and user management with role-based access"
+
+backend:
+  - task: "User Authentication - Login API"
+    implemented: true
+    working: true
+    file: "backend/server.py, backend/auth.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Implemented /api/auth/login endpoint with JWT token generation. Tested with curl - returns access_token and user info."
+      - working: true
+        agent: "testing"
+        comment: "✅ Comprehensive testing completed. All authentication APIs working correctly: login with admin/admin123 credentials ✓, GET /auth/me with valid JWT ✓, password change ✓, invalid credentials properly rejected ✓. Role-based access control functioning properly."
+
+  - task: "User Management - CRUD APIs"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Implemented /api/users endpoints (GET, POST, PUT, DELETE). Admin-only access. Tested user creation with curl."
+      - working: true
+        agent: "testing"
+        comment: "✅ Comprehensive testing completed. All user management APIs working correctly: GET /users (admin only) ✓, POST /users with different roles ✓, PUT /users/{id} ✓, DELETE /users/{id} ✓. Role-based access control properly enforced - manager cannot access /users endpoint (403) ✓."
+
+  - task: "Rule Templates - API endpoints"
+    implemented: true
+    working: true
+    file: "backend/server.py, backend/rule_templates.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Implemented /api/templates endpoints. 33 STP rule templates seeded from specification. Tested template listing and rule creation from template."
+      - working: true
+        agent: "testing"
+        comment: "✅ Comprehensive testing completed. All rule template APIs working correctly: GET /templates returns 33 STP templates ✓, GET /templates/{id} for specific template (STP001) ✓, POST /templates/{id}/create-rule successfully creates rules from templates ✓, GET /templates/categories/list returns 12 categories ✓."
+
+  - task: "Role-Based Access Control"
+    implemented: true
+    working: false
+    file: "backend/server.py, backend/auth.py"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Implemented require_permission() dependency. Roles: admin, manager, viewer with permission matrix."
+      - working: false
+        agent: "testing"
+        comment: "❌ CRITICAL ISSUE: Nested condition evaluation logic has a bug. Test rule '(Age>50 OR BMI>30) AND is_smoker=true' incorrectly triggers for cases where is_smoker=false. Cases 3&4 return FAIL when they should return PASS. This affects rule engine accuracy. Also found multiple age-related rules (Age Eligibility, GCRP Referral) that may interact unexpectedly with custom rules. Rule creation and basic RBAC work correctly."
+
+  - task: "Nested Condition Support"
+    implemented: true
+    working: false
+    file: "backend/server.py"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ CRITICAL BUG: Nested condition evaluation failing. Created test rule '(applicant_age>50 OR bmi>30) AND is_smoker=true' but evaluation returns incorrect results. Cases where is_smoker=false should return PASS but return FAIL instead. Rule creation works, but evaluation logic is broken. May be caused by rule priority conflicts or evaluation order issues with existing rules (Age Eligibility Check priority 10, GCRP Referral priority 60)."
 
 frontend:
-  - task: "Evaluation Console - Empty Form Initialization"
+  - task: "Login Page"
     implemented: true
-    working: true
-    file: "frontend/src/pages/EvaluationConsole.jsx"
+    working: "NA"
+    file: "frontend/src/pages/Login.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
-        comment: "Replaced hardcoded default values with empty strings and null values. Form now starts empty with placeholders."
-      - working: true
-        agent: "testing"
-        comment: "Verified that form fields start empty and show proper placeholders. All dropdowns show placeholder text like 'Select product type', 'Select gender', etc. Input fields show placeholders like 'e.g., 35' for Age, 'e.g., 24.5' for BMI, etc."
+        comment: "Created Login.jsx with username/password form, JWT auth, redirect after login."
 
-  - task: "Evaluation Console - Form Validation"
+  - task: "User Management Page"
     implemented: true
-    working: true
-    file: "frontend/src/pages/EvaluationConsole.jsx"
+    working: "NA"
+    file: "frontend/src/pages/UserManagement.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
-        comment: "Added validateProposal() function to check required fields before submission. Shows toast errors for missing fields."
-      - working: true
-        agent: "testing"
-        comment: "Verified that clicking 'Evaluate Proposal' with empty fields shows toast error messages for missing required fields."
+        comment: "Created UserManagement.jsx with user CRUD, role assignment, password reset dialogs. Admin only."
 
-  - task: "Evaluation Console - User Input Used in Evaluation"
+  - task: "Rule Templates Page"
     implemented: true
-    working: true
-    file: "frontend/src/pages/EvaluationConsole.jsx"
+    working: "NA"
+    file: "frontend/src/pages/RuleTemplates.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
-        comment: "handleEvaluate() now properly converts form string values to typed values and sends to backend. User-entered values are correctly used in STP evaluation."
-      - working: true
-        agent: "testing"
-        comment: "Code review confirms that handleEvaluate() properly converts user input to appropriate types for evaluation. The proposal data is built from form inputs rather than hardcoded values."
+        comment: "Created RuleTemplates.jsx displaying 33 STP templates. Create rule from template functionality."
 
-  - task: "Evaluation Console - Reset Button"
+  - task: "Nested Condition Builder"
     implemented: true
-    working: true
-    file: "frontend/src/pages/EvaluationConsole.jsx"
+    working: "NA"
+    file: "frontend/src/pages/RuleBuilder.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Enhanced RuleBuilder with NestedConditionGroup component. Supports (A OR B) AND (C OR D) nesting up to 3 levels."
+
+  - task: "AuthContext - State Management"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/contexts/AuthContext.jsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Created AuthContext with login/logout, permission checking, role-based access."
+
+  - task: "Protected Routes"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Updated App.js with ProtectedRoute component. Redirects to login if not authenticated."
+
+  - task: "Sidebar - User Profile & Navigation"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/components/layout/Sidebar.jsx"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
       - working: "NA"
         agent: "main"
-        comment: "Reset button now clears form to empty state using getEmptyProposal() helper function."
-      - working: true
-        agent: "testing"
-        comment: "Code review confirms that Reset button calls getEmptyProposal() function to clear all form fields and resets results. getEmptyProposal() correctly initializes all fields to empty values."
-
-  - task: "Evaluation Console - Smoker/Medical History Toggles"
-    implemented: true
-    working: true
-    file: "frontend/src/pages/EvaluationConsole.jsx"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-      - working: "NA"
-        agent: "main"
-        comment: "Smoker and Medical History toggles no longer set hardcoded defaults (10 cigarettes, 5 years, diabetes). Users must enter their own values."
-      - working: true
-        agent: "testing"
-        comment: "Code review confirms that smoker toggle initializes 'cigarettes_per_day' and 'smoking_years' to empty strings rather than hardcoded values. Medical history toggle initializes 'ailment_type' and 'ailment_duration_years' to empty strings rather than hardcoded defaults like 'diabetes'."
+        comment: "Updated Sidebar with user profile section, logout dropdown, role-based nav items (Users, Audit)."
 
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 1
+  test_sequence: 2
   run_ui: true
 
 test_plan:
-  current_focus: []
-  stuck_tasks: []
+  current_focus: ["Nested Condition Support"]
+  stuck_tasks: ["Nested Condition Support"]
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
   - agent: "main"
-    message: "Fixed hardcoded values in EvaluationConsole.jsx. Need to test: 1) Form starts empty with placeholders, 2) Validation shows errors for missing fields, 3) User-entered values are correctly used in STP evaluation (different values should produce different results), 4) Reset button clears form, 5) Smoker/Medical toggles don't set hardcoded defaults."
+    message: "Implemented all 3 requested features: 1) STP Rule Templates from doc (33 templates), 2) Nested conditions builder in RuleBuilder, 3) Login & User Management with roles. Backend tested with curl - all APIs working. Frontend needs UI testing for Login flow, Templates page, Nested conditions, and User Management."
   - agent: "testing"
-    message: "Testing complete: All tasks related to fixing hardcoded values in EvaluationConsole.jsx have been verified through visual inspection and code review. The form properly starts with empty fields showing placeholders, validation errors appear when submitting with empty fields, and toggles for Smoker/Medical History no longer set hardcoded defaults. All tests pass successfully."
+    message: "✅ BACKEND TESTING COMPLETED - 96.4% success rate (54/56 tests passed). ✅ All requested APIs working: Authentication (login, user info, password change), User Management (CRUD with RBAC), Rule Templates (33 STP templates, rule creation). ❌ CRITICAL ISSUE FOUND: Nested condition evaluation logic is broken - rules with nested conditions return incorrect results. This needs immediate fix as it affects underwriting accuracy."

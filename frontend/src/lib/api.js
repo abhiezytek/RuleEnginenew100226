@@ -10,6 +10,23 @@ const api = axios.create({
   },
 });
 
+// Token management
+export const setAuthToken = (token) => {
+  if (token) {
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    localStorage.setItem('authToken', token);
+  } else {
+    delete api.defaults.headers.common['Authorization'];
+    localStorage.removeItem('authToken');
+  }
+};
+
+// Initialize token from localStorage
+const storedToken = localStorage.getItem('authToken');
+if (storedToken) {
+  api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+}
+
 // Convert snake_case to camelCase for requests
 const toSnakeCase = (str) => str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
 const toCamelCase = (str) => str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
@@ -38,14 +55,45 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor - .NET returns snake_case due to our config
+// Response interceptor - handle auth errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     console.error('API Error:', error.response?.data || error.message);
+    // Handle 401 - redirect to login
+    if (error.response?.status === 401) {
+      setAuthToken(null);
+      localStorage.removeItem('authUser');
+      // Don't redirect if already on login page
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
     return Promise.reject(error);
   }
 );
+
+// ==================== AUTH API ====================
+export const login = (username, password) => api.post('/auth/login', { username, password });
+export const getCurrentUser = () => api.get('/auth/me');
+export const changePassword = (currentPassword, newPassword) => 
+  api.post('/auth/change-password', { current_password: currentPassword, new_password: newPassword });
+
+// ==================== USER MANAGEMENT API ====================
+export const getUsers = () => api.get('/users');
+export const getUser = (id) => api.get(`/users/${id}`);
+export const createUser = (data) => api.post('/users', data);
+export const updateUser = (id, data) => api.put(`/users/${id}`, data);
+export const deleteUser = (id) => api.delete(`/users/${id}`);
+export const resetUserPassword = (id, newPassword) => 
+  api.post(`/users/${id}/reset-password?new_password=${encodeURIComponent(newPassword)}`);
+
+// ==================== RULE TEMPLATES API ====================
+export const getRuleTemplates = (params) => api.get('/templates', { params });
+export const getRuleTemplate = (id) => api.get(`/templates/${id}`);
+export const createRuleFromTemplate = (templateId, stageId) => 
+  api.post(`/templates/${templateId}/create-rule${stageId ? `?stage_id=${stageId}` : ''}`);
+export const getTemplateCategories = () => api.get('/templates/categories/list');
 
 // Health & Dashboard
 export const healthCheck = () => api.get('/health');

@@ -32,132 +32,295 @@ import {
   Plus, 
   Trash2, 
   GripVertical,
-  AlertCircle
+  AlertCircle,
+  Layers,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 
-const ConditionBuilder = ({ conditions, onChange, logicalOperator, onLogicalChange }) => {
-  const addCondition = () => {
-    onChange([...conditions, { field: '', operator: 'equals', value: '' }]);
-  };
-
-  const removeCondition = (index) => {
-    onChange(conditions.filter((_, i) => i !== index));
-  };
-
-  const updateCondition = (index, field, value) => {
-    const updated = [...conditions];
-    updated[index] = { ...updated[index], [field]: value };
-    onChange(updated);
-  };
-
+// Single condition row component
+const ConditionRow = ({ condition, onChange, onRemove, index }) => {
   return (
-    <div className="space-y-4" data-testid="condition-builder">
-      <div className="flex items-center gap-4">
-        <Label>Logical Operator:</Label>
-        <Select value={logicalOperator} onValueChange={onLogicalChange}>
-          <SelectTrigger className="w-[120px]" data-testid="logical-operator-select">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {LOGICAL_OPERATORS.map(op => (
-              <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <span className="text-sm text-slate-500">
-          {logicalOperator === 'AND' ? 'All conditions must match' : 'At least one condition must match'}
-        </span>
-      </div>
+    <div 
+      className="flex items-center gap-2 p-2 bg-white rounded border border-slate-200"
+      data-testid={`condition-${index}`}
+    >
+      <GripVertical className="w-4 h-4 text-slate-400 cursor-move flex-shrink-0" />
+      
+      <Select 
+        value={condition.field || ''} 
+        onValueChange={(v) => onChange({ ...condition, field: v })}
+      >
+        <SelectTrigger className="w-[160px]" data-testid={`condition-field-${index}`}>
+          <SelectValue placeholder="Field" />
+        </SelectTrigger>
+        <SelectContent>
+          {AVAILABLE_FIELDS.map(field => (
+            <SelectItem key={field.value} value={field.value}>
+              {field.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
-      <div className="space-y-3">
-        {conditions.map((condition, index) => (
-          <div 
-            key={index} 
-            className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200"
-            data-testid={`condition-${index}`}
-          >
-            <GripVertical className="w-4 h-4 text-slate-400 cursor-move" />
-            
-            <Select 
-              value={condition.field} 
-              onValueChange={(v) => updateCondition(index, 'field', v)}
-            >
-              <SelectTrigger className="w-[180px]" data-testid={`condition-field-${index}`}>
-                <SelectValue placeholder="Select field" />
-              </SelectTrigger>
-              <SelectContent>
-                {AVAILABLE_FIELDS.map(field => (
-                  <SelectItem key={field.value} value={field.value}>
-                    {field.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <Select 
+        value={condition.operator || 'equals'} 
+        onValueChange={(v) => onChange({ ...condition, operator: v })}
+      >
+        <SelectTrigger className="w-[160px]" data-testid={`condition-operator-${index}`}>
+          <SelectValue placeholder="Operator" />
+        </SelectTrigger>
+        <SelectContent>
+          {OPERATORS.map(op => (
+            <SelectItem key={op.value} value={op.value}>
+              <span className="flex items-center gap-1">
+                <span className="font-mono text-xs">{op.symbol}</span>
+                {op.label}
+              </span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
-            <Select 
-              value={condition.operator} 
-              onValueChange={(v) => updateCondition(index, 'operator', v)}
-            >
-              <SelectTrigger className="w-[180px]" data-testid={`condition-operator-${index}`}>
-                <SelectValue placeholder="Operator" />
-              </SelectTrigger>
-              <SelectContent>
-                {OPERATORS.map(op => (
-                  <SelectItem key={op.value} value={op.value}>
-                    <span className="flex items-center gap-2">
-                      <span className="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded">
-                        {op.symbol}
-                      </span>
-                      {op.label}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {!['is_empty', 'is_not_empty'].includes(condition.operator) && (
+        <Input
+          placeholder="Value"
+          value={condition.value !== undefined ? String(condition.value) : ''}
+          onChange={(e) => onChange({ ...condition, value: e.target.value })}
+          className="w-[120px]"
+          data-testid={`condition-value-${index}`}
+        />
+      )}
 
-            {!['is_empty', 'is_not_empty'].includes(condition.operator) && (
-              <Input
-                placeholder="Value"
-                value={condition.value}
-                onChange={(e) => updateCondition(index, 'value', e.target.value)}
-                className="w-[150px]"
-                data-testid={`condition-value-${index}`}
-              />
-            )}
-
-            {condition.operator === 'between' && (
-              <Input
-                placeholder="Value 2"
-                value={condition.value2 || ''}
-                onChange={(e) => updateCondition(index, 'value2', e.target.value)}
-                className="w-[150px]"
-                data-testid={`condition-value2-${index}`}
-              />
-            )}
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => removeCondition(index)}
-              className="text-slate-400 hover:text-red-500"
-              data-testid={`condition-remove-${index}`}
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
-        ))}
-      </div>
+      {condition.operator === 'between' && (
+        <Input
+          placeholder="Value 2"
+          value={condition.value2 || ''}
+          onChange={(e) => onChange({ ...condition, value2: e.target.value })}
+          className="w-[120px]"
+          data-testid={`condition-value2-${index}`}
+        />
+      )}
 
       <Button
         type="button"
-        variant="outline"
-        onClick={addCondition}
-        className="w-full border-dashed"
-        data-testid="add-condition-btn"
+        variant="ghost"
+        size="icon"
+        onClick={onRemove}
+        className="text-slate-400 hover:text-red-500 flex-shrink-0"
+        data-testid={`condition-remove-${index}`}
       >
-        <Plus className="w-4 h-4 mr-2" />
-        Add Condition
+        <Trash2 className="w-4 h-4" />
       </Button>
+    </div>
+  );
+};
+
+// Nested condition group component - supports (A OR B) AND (C OR D) structure
+const NestedConditionGroup = ({ 
+  group, 
+  onChange, 
+  onRemove, 
+  depth = 0,
+  path = ''
+}) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+  
+  const isConditionGroup = (item) => {
+    return item && (item.conditions !== undefined || item.logical_operator !== undefined);
+  };
+
+  const addCondition = () => {
+    const newCondition = { field: '', operator: 'equals', value: '' };
+    onChange({
+      ...group,
+      conditions: [...(group.conditions || []), newCondition]
+    });
+  };
+
+  const addNestedGroup = () => {
+    const newGroup = {
+      logical_operator: group.logical_operator === 'AND' ? 'OR' : 'AND',
+      conditions: [{ field: '', operator: 'equals', value: '' }],
+      is_negated: false
+    };
+    onChange({
+      ...group,
+      conditions: [...(group.conditions || []), newGroup]
+    });
+  };
+
+  const updateItem = (index, newItem) => {
+    const updated = [...(group.conditions || [])];
+    updated[index] = newItem;
+    onChange({ ...group, conditions: updated });
+  };
+
+  const removeItem = (index) => {
+    const updated = (group.conditions || []).filter((_, i) => i !== index);
+    onChange({ ...group, conditions: updated });
+  };
+
+  const updateLogicalOperator = (op) => {
+    onChange({ ...group, logical_operator: op });
+  };
+
+  const bgColors = [
+    'bg-blue-50 border-blue-200',
+    'bg-purple-50 border-purple-200',
+    'bg-emerald-50 border-emerald-200',
+    'bg-amber-50 border-amber-200'
+  ];
+  
+  const bgColor = bgColors[depth % bgColors.length];
+
+  return (
+    <div className={`rounded-lg border-2 ${bgColor} p-3 ${depth > 0 ? 'ml-4' : ''}`}>
+      {/* Group Header */}
+      <div className="flex items-center gap-3 mb-3">
+        <button 
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-slate-500 hover:text-slate-700"
+        >
+          {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        
+        <div className="flex items-center gap-2 bg-white rounded-md px-2 py-1 border border-slate-200">
+          <Layers className="w-4 h-4 text-slate-400" />
+          <span className="text-sm font-medium text-slate-600">
+            {depth === 0 ? 'Root Group' : `Nested Group ${depth}`}
+          </span>
+        </div>
+        
+        <Select value={group.logical_operator || 'AND'} onValueChange={updateLogicalOperator}>
+          <SelectTrigger className="w-[100px] h-8">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="AND">AND</SelectItem>
+            <SelectItem value="OR">OR</SelectItem>
+          </SelectContent>
+        </Select>
+        
+        <span className="text-xs text-slate-500">
+          {group.logical_operator === 'AND' ? '(all must match)' : '(any must match)'}
+        </span>
+        
+        {depth > 0 && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onRemove}
+            className="ml-auto text-slate-400 hover:text-red-500"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
+
+      {/* Conditions */}
+      {isExpanded && (
+        <div className="space-y-2">
+          {(group.conditions || []).map((item, index) => (
+            <div key={index}>
+              {isConditionGroup(item) ? (
+                <NestedConditionGroup
+                  group={item}
+                  onChange={(newGroup) => updateItem(index, newGroup)}
+                  onRemove={() => removeItem(index)}
+                  depth={depth + 1}
+                  path={`${path}[${index}]`}
+                />
+              ) : (
+                <ConditionRow
+                  condition={item}
+                  onChange={(newCond) => updateItem(index, newCond)}
+                  onRemove={() => removeItem(index)}
+                  index={index}
+                />
+              )}
+              
+              {/* Show logical operator between conditions */}
+              {index < (group.conditions || []).length - 1 && (
+                <div className="flex items-center justify-center py-1">
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                    group.logical_operator === 'AND' 
+                      ? 'bg-blue-100 text-blue-700' 
+                      : 'bg-orange-100 text-orange-700'
+                  }`}>
+                    {group.logical_operator || 'AND'}
+                  </span>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Add buttons */}
+          <div className="flex gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addCondition}
+              className="flex-1 border-dashed"
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              Add Condition
+            </Button>
+            {depth < 3 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addNestedGroup}
+                className="flex-1 border-dashed bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100"
+              >
+                <Layers className="w-3 h-3 mr-1" />
+                Add Nested Group
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Main Condition Builder with nested support
+const ConditionBuilder = ({ conditionGroup, onChange }) => {
+  return (
+    <div className="space-y-4" data-testid="condition-builder">
+      {/* Help text */}
+      <div className="bg-slate-100 rounded-lg p-3 text-sm text-slate-600">
+        <p className="font-medium mb-1">💡 Building Complex Conditions</p>
+        <p>Create nested conditions like: <code className="bg-slate-200 px-1 rounded">(A OR B) AND (C OR D)</code></p>
+        <ul className="list-disc list-inside mt-1 text-xs">
+          <li><strong>AND</strong> = All conditions in the group must be true</li>
+          <li><strong>OR</strong> = At least one condition must be true</li>
+          <li>Use "Add Nested Group" to create sub-groups with different logic</li>
+        </ul>
+      </div>
+
+      <NestedConditionGroup
+        group={conditionGroup}
+        onChange={onChange}
+        depth={0}
+      />
+
+      {/* Negate option */}
+      <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+        <Checkbox
+          id="is_negated"
+          checked={conditionGroup.is_negated || false}
+          onCheckedChange={(checked) => onChange({ ...conditionGroup, is_negated: checked })}
+          data-testid="is-negated-checkbox"
+        />
+        <Label htmlFor="is_negated" className="text-amber-700">
+          Negate entire condition group (NOT) - Trigger when conditions are FALSE
+        </Label>
+      </div>
     </div>
   );
 };
@@ -225,6 +388,25 @@ const RuleBuilder = () => {
     }
   };
 
+  // Recursively process conditions to parse values
+  const processConditions = (items) => {
+    return items.map(item => {
+      // Check if it's a nested condition group
+      if (item.conditions !== undefined || item.logical_operator !== undefined) {
+        return {
+          ...item,
+          conditions: processConditions(item.conditions || [])
+        };
+      }
+      // It's a simple condition
+      return {
+        ...item,
+        value: parseConditionValue(item.value),
+        value2: item.value2 ? parseConditionValue(item.value2) : null
+      };
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -233,7 +415,7 @@ const RuleBuilder = () => {
       return;
     }
 
-    if (formData.condition_group.conditions.length === 0) {
+    if (!formData.condition_group.conditions || formData.condition_group.conditions.length === 0) {
       toast.error('At least one condition is required');
       return;
     }
@@ -241,16 +423,12 @@ const RuleBuilder = () => {
     try {
       setSaving(true);
       
-      // Parse numeric values in conditions
+      // Parse numeric values in conditions (including nested)
       const processedData = {
         ...formData,
         condition_group: {
           ...formData.condition_group,
-          conditions: formData.condition_group.conditions.map(cond => ({
-            ...cond,
-            value: parseConditionValue(cond.value),
-            value2: cond.value2 ? parseConditionValue(cond.value2) : null
-          }))
+          conditions: processConditions(formData.condition_group.conditions || [])
         },
         action: {
           ...formData.action,
@@ -427,32 +605,12 @@ const RuleBuilder = () => {
               </CardHeader>
               <CardContent>
                 <ConditionBuilder
-                  conditions={formData.condition_group.conditions}
-                  onChange={(conditions) => setFormData({
+                  conditionGroup={formData.condition_group}
+                  onChange={(newConditionGroup) => setFormData({
                     ...formData,
-                    condition_group: { ...formData.condition_group, conditions }
-                  })}
-                  logicalOperator={formData.condition_group.logical_operator}
-                  onLogicalChange={(op) => setFormData({
-                    ...formData,
-                    condition_group: { ...formData.condition_group, logical_operator: op }
+                    condition_group: newConditionGroup
                   })}
                 />
-
-                <div className="flex items-center gap-2 mt-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                  <Checkbox
-                    id="is_negated"
-                    checked={formData.condition_group.is_negated}
-                    onCheckedChange={(checked) => setFormData({
-                      ...formData,
-                      condition_group: { ...formData.condition_group, is_negated: checked }
-                    })}
-                    data-testid="is-negated-checkbox"
-                  />
-                  <Label htmlFor="is_negated" className="text-amber-700">
-                    Negate this condition group (NOT)
-                  </Label>
-                </div>
               </CardContent>
             </Card>
 
