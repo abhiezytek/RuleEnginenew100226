@@ -111,7 +111,47 @@ using (var scope = app.Services.CreateScope())
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var authService = scope.ServiceProvider.GetRequiredService<IAuthService>();
     
+    // This will create all tables including users and rule_templates
     context.Database.EnsureCreated();
+    
+    // Run raw SQL to ensure tables exist (for existing databases)
+    try
+    {
+        context.Database.ExecuteSqlRaw(@"
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                username TEXT NOT NULL UNIQUE,
+                email TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                full_name TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'viewer',
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                last_login TEXT
+            )");
+        
+        context.Database.ExecuteSqlRaw(@"
+            CREATE TABLE IF NOT EXISTS rule_templates (
+                id TEXT PRIMARY KEY,
+                template_id TEXT NOT NULL UNIQUE,
+                name TEXT NOT NULL,
+                description TEXT,
+                category TEXT NOT NULL DEFAULT 'stp_decision',
+                condition_group TEXT NOT NULL DEFAULT '{}',
+                action TEXT NOT NULL DEFAULT '{}',
+                letter_flag TEXT,
+                follow_up_code TEXT,
+                priority INTEGER NOT NULL DEFAULT 100,
+                products TEXT NOT NULL DEFAULT '[]',
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL
+            )");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Migration note: {ex.Message}");
+    }
     
     // Seed default admin user
     RuleTemplateSeeder.SeedDefaultAdmin(context, authService);
