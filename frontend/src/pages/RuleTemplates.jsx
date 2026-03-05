@@ -275,12 +275,12 @@ const RuleTemplates = () => {
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium text-slate-700">Assign to Stage (Optional)</label>
-              <Select value={selectedStageId} onValueChange={setSelectedStageId}>
+              <Select value={selectedStageId || "none"} onValueChange={(val) => setSelectedStageId(val === "none" ? "" : val)}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Select a stage (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No stage (process last)</SelectItem>
+                  <SelectItem value="none">No stage (process last)</SelectItem>
                   {stages.map(stage => (
                     <SelectItem key={stage.id} value={stage.id}>
                       {stage.name}
