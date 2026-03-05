@@ -36,8 +36,13 @@ engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} i
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-# Create the main app
-app = FastAPI(title="Life Insurance STP & Underwriting Rule Engine")
+# Create the main app with docs under /api path
+app = FastAPI(
+    title="Life Insurance STP & Underwriting Rule Engine",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json"
+)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
