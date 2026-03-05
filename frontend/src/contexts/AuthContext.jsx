@@ -69,13 +69,28 @@ export const AuthProvider = ({ children }) => {
     if (token && storedUser) {
       try {
         setAuthToken(token);
-        // Verify token is still valid
+        // Try to verify token is still valid
         const response = await getCurrentUser();
         setUser(response.data);
         setIsAuthenticated(true);
       } catch (error) {
         console.error('Auth check failed:', error);
-        logout();
+        // Only logout if it's a 401 error (invalid token)
+        // For other errors (network, server down), keep the user logged in
+        if (error.response?.status === 401) {
+          console.log('Token invalid, logging out');
+          logout();
+        } else {
+          // For other errors, use stored user data and assume authenticated
+          console.log('Auth check failed but keeping session (non-401 error)');
+          try {
+            const userData = JSON.parse(storedUser);
+            setUser(userData);
+            setIsAuthenticated(true);
+          } catch {
+            logout();
+          }
+        }
       }
     }
     setLoading(false);

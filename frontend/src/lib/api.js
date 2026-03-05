@@ -44,10 +44,11 @@ const convertKeys = (obj, converter) => {
   return obj;
 };
 
-// Request interceptor - log requests
+// Request interceptor - log requests with auth header
 api.interceptors.request.use(
   (config) => {
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    console.log('Auth Header:', config.headers?.Authorization ? 'Present' : 'Missing');
     return config;
   },
   (error) => {
@@ -55,30 +56,39 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor - handle auth errors
+// Response interceptor - handle errors properly
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    const status = error.response?.status;
+    const errorMessage = error.response?.data?.detail || error.response?.data?.message || error.message;
     
-    // Handle 401 - only redirect for auth/me endpoint (token validation)
-    // For other endpoints, just show the error and let the component handle it
-    if (error.response?.status === 401) {
+    console.error('API Error:', {
+      status,
+      url: error.config?.url,
+      message: errorMessage,
+      data: error.response?.data
+    });
+    
+    // Only redirect to login if token is completely invalid/expired
+    // AND it's a background auth check (not a user action)
+    if (status === 401) {
       const isAuthMeEndpoint = error.config?.url?.includes('/auth/me');
-      const isLoginEndpoint = error.config?.url?.includes('/auth/login');
       
-      // Only auto-redirect if it's the auth/me check failing (token expired/invalid)
-      // Don't redirect for login failures or other API calls
-      if (isAuthMeEndpoint && !isLoginEndpoint) {
+      // Only auto-redirect if the auth/me check fails (session expired)
+      if (isAuthMeEndpoint) {
+        console.log('Session expired, redirecting to login...');
         setAuthToken(null);
         localStorage.removeItem('authUser');
         if (window.location.pathname !== '/login') {
           window.location.href = '/login';
         }
+      } else {
+        // For other 401 errors, don't redirect - let the component handle it
+        console.log('401 error on:', error.config?.url, '- NOT redirecting');
       }
-      // For other 401 errors, just log and let the error propagate
-      // The component can show appropriate error message
     }
+    
     return Promise.reject(error);
   }
 );
