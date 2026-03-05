@@ -15,10 +15,44 @@ public class AppDbContext : DbContext
     public DbSet<Product> Products { get; set; }
     public DbSet<Evaluation> Evaluations { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<User> Users { get; set; }
+    public DbSet<RuleTemplate> RuleTemplates { get; set; }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        
+        // ==================== USERS TABLE ====================
+        modelBuilder.Entity<User>().ToTable("users");
+        modelBuilder.Entity<User>().Property(u => u.Id).HasColumnName("id");
+        modelBuilder.Entity<User>().Property(u => u.Username).HasColumnName("username");
+        modelBuilder.Entity<User>().Property(u => u.Email).HasColumnName("email");
+        modelBuilder.Entity<User>().Property(u => u.PasswordHash).HasColumnName("password_hash");
+        modelBuilder.Entity<User>().Property(u => u.FullName).HasColumnName("full_name");
+        modelBuilder.Entity<User>().Property(u => u.Role).HasColumnName("role");
+        modelBuilder.Entity<User>().Property(u => u.IsActive).HasColumnName("is_active");
+        modelBuilder.Entity<User>().Property(u => u.CreatedAt).HasColumnName("created_at");
+        modelBuilder.Entity<User>().Property(u => u.UpdatedAt).HasColumnName("updated_at");
+        modelBuilder.Entity<User>().Property(u => u.LastLogin).HasColumnName("last_login");
+        modelBuilder.Entity<User>().HasIndex(u => u.Username).IsUnique();
+        modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
+        
+        // ==================== RULE_TEMPLATES TABLE ====================
+        modelBuilder.Entity<RuleTemplate>().ToTable("rule_templates");
+        modelBuilder.Entity<RuleTemplate>().Property(t => t.Id).HasColumnName("id");
+        modelBuilder.Entity<RuleTemplate>().Property(t => t.TemplateId).HasColumnName("template_id");
+        modelBuilder.Entity<RuleTemplate>().Property(t => t.Name).HasColumnName("name");
+        modelBuilder.Entity<RuleTemplate>().Property(t => t.Description).HasColumnName("description");
+        modelBuilder.Entity<RuleTemplate>().Property(t => t.Category).HasColumnName("category");
+        modelBuilder.Entity<RuleTemplate>().Property(t => t.ConditionGroupJson).HasColumnName("condition_group");
+        modelBuilder.Entity<RuleTemplate>().Property(t => t.ActionJson).HasColumnName("action");
+        modelBuilder.Entity<RuleTemplate>().Property(t => t.LetterFlag).HasColumnName("letter_flag");
+        modelBuilder.Entity<RuleTemplate>().Property(t => t.FollowUpCode).HasColumnName("follow_up_code");
+        modelBuilder.Entity<RuleTemplate>().Property(t => t.Priority).HasColumnName("priority");
+        modelBuilder.Entity<RuleTemplate>().Property(t => t.ProductsJson).HasColumnName("products");
+        modelBuilder.Entity<RuleTemplate>().Property(t => t.IsActive).HasColumnName("is_active");
+        modelBuilder.Entity<RuleTemplate>().Property(t => t.CreatedAt).HasColumnName("created_at");
+        modelBuilder.Entity<RuleTemplate>().HasIndex(t => t.TemplateId).IsUnique();
         
         // ==================== RULES TABLE ====================
         modelBuilder.Entity<Rule>().ToTable("rules");
